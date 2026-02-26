@@ -1,0 +1,187 @@
+/* PDF/Print 专用样式 */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
+
+  /* Reset all height/overflow constraints for multi-page printing */
+  html, body, #root {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Remove flex layout constraints that clip content */
+  #root > div,
+  #root > div > div {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* 隐藏不需要打印的元素（必须放在 display:block 规则之后，避免被覆盖） */
+  .no-print,
+  .no-print * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* 让预览区占满整个页面，移除所有约束 */
+  #preview-pane,
+  #markdown-preview {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    position: static !important;
+  }
+
+  /* 整体排版 */
+  body {
+    font-size: 11pt;
+    line-height: 1.6;
+    font-family: 'Source Serif 4', Georgia, serif;
+  }
+
+  /* 标题 */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    break-after: avoid;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    color: #000 !important;
+  }
+
+  h1 {
+    font-size: 24pt;
+    margin-top: 0;
+  }
+
+  h2 {
+    font-size: 20pt;
+  }
+
+  h3 {
+    font-size: 16pt;
+  }
+
+  /* 段落 */
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* 代码块 - allow page breaks for long code */
+  pre {
+    break-inside: auto;
+    page-break-inside: auto;
+    border: 1px solid #ddd;
+    padding: 8pt;
+    border-radius: 4pt;
+    background: #f5f5f5 !important;
+    color: #333 !important;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 9pt;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow: visible !important;
+  }
+
+  code {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 9pt;
+  }
+
+  /* Syntax highlighter overrides for print */
+  pre > div, pre > code {
+    background: #f5f5f5 !important;
+    color: #333 !important;
+    overflow: visible !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+  }
+
+  /* 引用块 */
+  blockquote {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    border-left: 3pt solid #ddd;
+    padding-left: 12pt;
+    margin: 12pt 0;
+    color: #555 !important;
+  }
+
+  /* 图片 */
+  img {
+    max-width: 100%;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* 表格 */
+  table {
+    page-break-inside: auto;
+    break-inside: auto;
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  th, td {
+    border: 1px solid #ddd;
+    padding: 6pt;
+    text-align: left;
+  }
+
+  th {
+    background: #f5f5f5 !important;
+    font-weight: bold;
+  }
+
+  /* 列表 - allow page breaks for long lists */
+  ul, ol {
+    page-break-inside: auto;
+    break-inside: auto;
+  }
+
+  li {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* 链接 */
+  a {
+    color: #000;
+    text-decoration: underline;
+  }
+
+  /* 水平线 */
+  hr {
+    border: none;
+    border-top: 1pt solid #ddd;
+    margin: 12pt 0;
+  }
+
+  /* 强制预览区在打印时可见 */
+  .prose {
+    max-width: none !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Hide status bar and all chrome */
+  .status-bar {
+    display: none !important;
+  }
+}
