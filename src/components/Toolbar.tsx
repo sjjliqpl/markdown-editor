@@ -15,6 +15,7 @@ import {
   Image,
   Languages,
   Type,
+  List,
 } from 'lucide-react';
 import type { ThemeMode } from '../hooks/useTheme';
 import type { Locale } from '../i18n';
@@ -41,6 +42,8 @@ interface ToolbarProps {
   onToggleLocale: () => void;
   fontFamily: FontFamily;
   onFontChange: (font: FontFamily) => void;
+  showToc?: boolean;
+  onTocToggle?: () => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -60,6 +63,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onToggleLocale,
   fontFamily,
   onFontChange,
+  showToc = false,
+  onTocToggle,
 }) => {
   const [showFileMenu, setShowFileMenu] = useState(false);
   const tr = t(locale);
@@ -164,14 +169,56 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        background: 'var(--bg-primary)',
-        borderRadius: 'var(--radius-md)',
-        padding: '3px',
-        gap: '2px',
+        gap: '6px',
       }}>
-        <ViewToggle icon={<PanelLeft size={14} />} tooltip={tr.editorOnly} active={viewMode === 'editor'} onClick={() => onViewModeChange('editor')} />
-        <ViewToggle icon={<Columns2 size={14} />} tooltip={tr.splitView} active={viewMode === 'split'} onClick={() => onViewModeChange('split')} />
-        <ViewToggle icon={<PanelRight size={14} />} tooltip={tr.previewOnly} active={viewMode === 'preview'} onClick={() => onViewModeChange('preview')} />
+        {/* TOC toggle */}
+        {onTocToggle && (
+          <button
+            onClick={onTocToggle}
+            title={tr.tocToggle}
+            aria-pressed={showToc}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '30px',
+              height: '26px',
+              borderRadius: '5px',
+              border: 'none',
+              cursor: 'pointer',
+              color: showToc ? 'var(--accent)' : 'var(--text-muted)',
+              background: showToc ? 'var(--accent-subtle)' : 'var(--bg-primary)',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={e => {
+              if (!showToc) {
+                (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)';
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)';
+              }
+            }}
+            onMouseLeave={e => {
+              if (!showToc) {
+                (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-primary)';
+                (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
+              }
+            }}
+          >
+            <List size={14} />
+          </button>
+        )}
+
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          background: 'var(--bg-primary)',
+          borderRadius: 'var(--radius-md)',
+          padding: '3px',
+          gap: '2px',
+        }}>
+          <ViewToggle icon={<PanelLeft size={14} />} tooltip={tr.editorOnly} active={viewMode === 'editor'} onClick={() => onViewModeChange('editor')} />
+          <ViewToggle icon={<Columns2 size={14} />} tooltip={tr.splitView} active={viewMode === 'split'} onClick={() => onViewModeChange('split')} />
+          <ViewToggle icon={<PanelRight size={14} />} tooltip={tr.previewOnly} active={viewMode === 'preview'} onClick={() => onViewModeChange('preview')} />
+        </div>
       </div>
 
       {/* Right: Stats + Actions */}

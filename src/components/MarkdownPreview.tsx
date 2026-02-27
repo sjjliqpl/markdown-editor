@@ -5,6 +5,18 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { FontFamily } from '../hooks/useFontFamily';
+import { slugify } from '../hooks/useToc';
+
+/** Recursively extract plain text from React children */
+function extractText(children: React.ReactNode): string {
+  if (typeof children === 'string') return children;
+  if (typeof children === 'number') return String(children);
+  if (Array.isArray(children)) return children.map(extractText).join('');
+  if (React.isValidElement(children)) {
+    return extractText((children.props as any).children);
+  }
+  return '';
+}
 
 interface MarkdownPreviewProps {
   content: string;
@@ -19,6 +31,8 @@ export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
 }) => {
   const previewRef = React.useRef<HTMLDivElement>(null);
   const [isDark, setIsDark] = React.useState(true);
+  // heading counter — reset on every render so IDs are stable
+  const headingIndexRef = React.useRef(0);
 
   // Resolve actual CSS font value from fontFamily id
   const fontCssMap: Record<string, string> = {
@@ -197,6 +211,23 @@ export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
+            // Reset counter at the start of each render
+            ...((() => { headingIndexRef.current = 0; return {}; })()),
+            h1({ children, ...props }: any) {
+              const text = extractText(children);
+              const id = slugify(text, headingIndexRef.current++);
+              return <h1 data-heading-id={id} id={id} {...props}>{children}</h1>;
+            },
+            h2({ children, ...props }: any) {
+              const text = extractText(children);
+              const id = slugify(text, headingIndexRef.current++);
+              return <h2 data-heading-id={id} id={id} {...props}>{children}</h2>;
+            },
+            h3({ children, ...props }: any) {
+              const text = extractText(children);
+              const id = slugify(text, headingIndexRef.current++);
+              return <h3 data-heading-id={id} id={id} {...props}>{children}</h3>;
+            },
             code({ node, inline, className, children, ...props }: any) {
               const match = /language-(\w+)/.exec(className || '');
               return !inline && match ? (

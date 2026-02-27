@@ -36,6 +36,7 @@ export interface Translation {
   fontZcool: string;
   fontGroupEn: string;
   fontGroupZh: string;
+  tocToggle: string;
 }
 
 const en: Translation = {
@@ -74,6 +75,7 @@ const en: Translation = {
   fontZcool: 'ZCOOL XiaoWei',
   fontGroupEn: 'Latin',
   fontGroupZh: 'Chinese',
+  tocToggle: 'Table of Contents',
 };
 
 const zh: Translation = {
@@ -112,6 +114,7 @@ const zh: Translation = {
   fontZcool: '站酷小薇体',
   fontGroupEn: '西文',
   fontGroupZh: '中文',
+  tocToggle: '目录',
 };
 
 const translations: Record<Locale, Translation> = { en, zh };

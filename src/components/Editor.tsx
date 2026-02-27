@@ -3,11 +3,13 @@ import html2canvas from 'html2canvas';
 import { Toolbar } from './Toolbar';
 import { MarkdownEditor } from './MarkdownEditor';
 import { MarkdownPreview } from './MarkdownPreview';
+import { TableOfContents } from './TableOfContents';
 import { useFileSystem } from '../hooks/useFileSystem';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useTheme } from '../hooks/useTheme';
 import { useLocale } from '../hooks/useLocale';
 import { useFontFamily } from '../hooks/useFontFamily';
+import { useToc } from '../hooks/useToc';
 import { t } from '../i18n';
 
 const INITIAL_CONTENT = `# Welcome to Markdown Editor
@@ -63,6 +65,18 @@ export const Editor: React.FC = () => {
   const { themeMode, cycleTheme } = useTheme();
   const { locale, toggleLocale } = useLocale();
   const { fontFamily, setFontFamily } = useFontFamily();
+  const [showToc, setShowToc] = useState<boolean>(
+    () => localStorage.getItem('markdown-toc-open') === 'true'
+  );
+  const tocItems = useToc(deferredContent);
+
+  const handleTocToggle = useCallback(() => {
+    setShowToc(prev => {
+      const next = !prev;
+      localStorage.setItem('markdown-toc-open', String(next));
+      return next;
+    });
+  }, []);
 
   const handleContentChange = useCallback((newContent: string) => {
     setContent(newContent);
@@ -191,6 +205,8 @@ export const Editor: React.FC = () => {
         onToggleLocale={toggleLocale}
         fontFamily={fontFamily}
         onFontChange={setFontFamily}
+        showToc={showToc}
+        onTocToggle={handleTocToggle}
       />
 
       <div style={{
@@ -199,14 +215,27 @@ export const Editor: React.FC = () => {
         overflow: 'hidden',
         position: 'relative',
       }}>
+        {/* TOC panel — only visible when preview is showing */}
+        {showToc && showPreview && (
+          <TableOfContents
+            items={tocItems}
+            open={showToc}
+            onClose={() => {
+              setShowToc(false);
+              localStorage.setItem('markdown-toc-open', 'false');
+            }}
+            previewPaneId="markdown-preview"
+          />
+        )}
         {/* Editor pane */}
         {showEditor && (
           <div
             className="no-print"
             style={{
-              width: viewMode === 'split' ? '50%' : '100%',
+              flex: 1,
+              minWidth: 0,
               borderRight: viewMode === 'split' ? '1px solid var(--border)' : 'none',
-              transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               animation: 'fadeIn 0.2s ease-out',
             }}
           >
@@ -220,33 +249,12 @@ export const Editor: React.FC = () => {
           </div>
         )}
 
-        {/* Resize handle */}
-        {viewMode === 'split' && (
-          <div style={{
-            position: 'absolute',
-            left: '50%',
-            top: 0,
-            bottom: 0,
-            width: '4px',
-            marginLeft: '-2px',
-            cursor: 'col-resize',
-            zIndex: 10,
-            background: 'transparent',
-          }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = 'var(--accent-subtle)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'transparent';
-            }}
-          />
-        )}
-
         {/* Preview pane */}
         {showPreview && (
           <div id="preview-pane" style={{
-            width: viewMode === 'split' ? '50%' : '100%',
-            transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            flex: 1,
+            minWidth: 0,
+            transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             animation: 'fadeIn 0.2s ease-out',
           }}>
             <MarkdownPreview
