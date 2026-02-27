@@ -234,8 +234,9 @@ export const Editor: React.FC = () => {
               localStorage.setItem('markdown-toc-open', 'false');
             }}
             previewPaneId="markdown-preview"
-            onScrollToEditorLine={handleScrollToEditorLine}
-            editorTopLine={editorTopLine}
+            previewRef={previewRef}
+            onScrollToEditorLine={showEditor ? handleScrollToEditorLine : undefined}
+            editorTopLine={showEditor ? editorTopLine : undefined}
             hasPreview={showPreview}
           />
         )}

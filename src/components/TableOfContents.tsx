@@ -1,12 +1,15 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Hash, ChevronRight, X } from 'lucide-react';
 import type { TocItem } from '../hooks/useToc';
+import type { MarkdownPreviewHandle } from './MarkdownPreview';
 
 interface TableOfContentsProps {
   items: TocItem[];
   open: boolean;
   onClose: () => void;
   previewPaneId?: string;
+  /** Ref to the preview component for imperative scroll */
+  previewRef?: React.RefObject<MarkdownPreviewHandle | null>;
   /** Called when user clicks a TOC item — scroll editor to corresponding line */
   onScrollToEditorLine?: (lineNumber: number) => void;
   /** The current topmost visible line number in the editor (0-based) */
@@ -20,6 +23,7 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({
   open,
   onClose,
   previewPaneId = 'markdown-preview',
+  previewRef,
   onScrollToEditorLine,
   editorTopLine,
   hasPreview = true,
@@ -122,15 +126,23 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({
     if (hasPreview) {
       const root = document.getElementById(previewPaneId);
       if (root) {
-        const target = root.querySelector(`[data-heading-id="${item.id}"]`) as HTMLElement | null;
+        // Try data-heading-id first, then fall back to id selector
+        const target = (
+          root.querySelector(`[data-heading-id="${item.id}"]`) ??
+          root.querySelector(`#${CSS.escape(item.id)}`)
+        ) as HTMLElement | null;
+
         if (target) {
           const containerRect = root.getBoundingClientRect();
           const targetRect = target.getBoundingClientRect();
           const scrollOffset = root.scrollTop + (targetRect.top - containerRect.top) - 32;
-          root.scrollTo({ top: scrollOffset, behavior: 'smooth' });
-
-          // Release lock once this scroll element finishes moving
+          root.scrollTo({ top: Math.max(0, scrollOffset), behavior: 'smooth' });
           root.addEventListener('scrollend', releaseLock, { once: true });
+        } else if (previewRef?.current) {
+          // Fallback: estimate position by item index percentage
+          const idx = items.findIndex(i => i.id === item.id);
+          const pct = items.length > 1 ? idx / (items.length - 1) : 0;
+          previewRef.current.scrollToPercentage(pct);
         }
       }
     }
@@ -139,7 +151,7 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({
     if (onScrollToEditorLine) {
       onScrollToEditorLine(item.lineNumber);
     }
-  }, [hasPreview, previewPaneId, onScrollToEditorLine, releaseLock]);
+  }, [hasPreview, previewPaneId, previewRef, items, onScrollToEditorLine, releaseLock]);
 
   if (!open) return null;
 
