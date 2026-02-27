@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { FormatToolbar } from './FormatToolbar';
 import { useHistory } from '../hooks/useHistory';
 
@@ -7,29 +7,72 @@ interface MarkdownEditorProps {
   onChange: (value: string) => void;
   onScroll?: (scrollPercentage: number) => void;
   onImageUpload?: (file: File) => void;
+  /** Called when the topmost visible line in the editor changes */
+  onTopLineChange?: (lineNumber: number) => void;
 }
 
-export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
+export interface MarkdownEditorHandle {
+  /** Scroll the editor so that the given 0-based line number is at the top */
+  scrollToLine: (lineNumber: number) => void;
+}
+
+export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
   value,
   onChange,
   onScroll,
   onImageUpload,
-}) => {
+  onTopLineChange,
+}, ref) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { canUndo, canRedo, pushHistory, undo, redo } = useHistory(value);
 
   // Debounce timer ref for history push
   const historyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /** Compute the line-height of the textarea by measuring a single line */
+  const getLineHeight = useCallback((): number => {
+    const textarea = textareaRef.current;
+    if (!textarea) return 22.95; // fallback: 13.5px * 1.7
+    const computed = getComputedStyle(textarea);
+    const lh = parseFloat(computed.lineHeight);
+    if (!isNaN(lh) && lh > 0) return lh;
+    // fallback: fontSize * lineHeight ratio
+    const fs = parseFloat(computed.fontSize) || 13.5;
+    return fs * 1.7;
+  }, []);
+
+  /** Scroll the textarea so the given 0-based line number is at the top */
+  const scrollToLine = useCallback((lineNumber: number) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const lineH = getLineHeight();
+    const paddingTop = parseFloat(getComputedStyle(textarea).paddingTop) || 24;
+    const targetScrollTop = lineNumber * lineH - paddingTop;
+    textarea.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+  }, [getLineHeight]);
+
+  useImperativeHandle(ref, () => ({ scrollToLine }), [scrollToLine]);
+
   const handleScroll = useCallback(() => {
-    if (textareaRef.current && onScroll) {
-      const { scrollTop, scrollHeight, clientHeight } = textareaRef.current;
-      if (scrollHeight - clientHeight > 0) {
-        const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
-        onScroll(scrollPercentage);
-      }
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = textarea;
+
+    // Report scroll percentage for preview sync
+    if (onScroll && scrollHeight - clientHeight > 0) {
+      const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
+      onScroll(scrollPercentage);
     }
-  }, [onScroll]);
+
+    // Report the top visible line number to parent
+    if (onTopLineChange) {
+      const lineH = getLineHeight();
+      const paddingTop = parseFloat(getComputedStyle(textarea).paddingTop) || 24;
+      const topLine = Math.floor((scrollTop + paddingTop) / lineH);
+      onTopLineChange(Math.max(0, topLine));
+    }
+  }, [onScroll, onTopLineChange, getLineHeight]);
 
   const handleDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
     e.preventDefault();
@@ -204,4 +247,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       />
     </div>
   );
-};
+});
+
+MarkdownEditor.displayName = 'MarkdownEditor';

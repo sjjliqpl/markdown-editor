@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Hash, ChevronRight, X } from 'lucide-react';
 import type { TocItem } from '../hooks/useToc';
 
@@ -6,7 +6,13 @@ interface TableOfContentsProps {
   items: TocItem[];
   open: boolean;
   onClose: () => void;
-  previewPaneId?: string; // id of scrollable preview container
+  previewPaneId?: string;
+  /** Called when user clicks a TOC item — scroll editor to corresponding line */
+  onScrollToEditorLine?: (lineNumber: number) => void;
+  /** The current topmost visible line number in the editor (0-based) */
+  editorTopLine?: number;
+  /** Whether preview pane is visible (for preview scroll sync) */
+  hasPreview?: boolean;
 }
 
 export const TableOfContents: React.FC<TableOfContentsProps> = ({
@@ -14,13 +20,40 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({
   open,
   onClose,
   previewPaneId = 'markdown-preview',
+  onScrollToEditorLine,
+  editorTopLine,
+  hasPreview = true,
 }) => {
   const [activeId, setActiveId] = useState<string>('');
   const observerRef = useRef<IntersectionObserver | null>(null);
+  /**
+   * When the user clicks a TOC item we "lock" that id here.
+   * While locked, ALL external sources (IntersectionObserver + editorTopLine)
+   * are blocked from changing the highlight. The lock is released only after
+   * the smooth scroll truly finishes (scrollend event or 1200ms fallback).
+   */
+  const lockedIdRef = useRef<string | null>(null);
+  const lockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tocListRef = useRef<HTMLDivElement>(null);
+
+  /** Release the lock and let normal tracking resume */
+  const releaseLock = useCallback(() => {
+    lockedIdRef.current = null;
+    if (lockTimerRef.current) {
+      clearTimeout(lockTimerRef.current);
+      lockTimerRef.current = null;
+    }
+  }, []);
+
+  /** Set active only when not locked (or when we are the lock owner) */
+  const setActiveIfUnlocked = useCallback((id: string) => {
+    if (lockedIdRef.current !== null) return; // locked by a click — ignore
+    setActiveId(id);
+  }, []);
 
   // Track active heading via IntersectionObserver on the preview container
   useEffect(() => {
-    if (!open) return;
+    if (!open || !hasPreview) return;
     observerRef.current?.disconnect();
 
     const root = document.getElementById(previewPaneId);
@@ -34,7 +67,7 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        // Pick the topmost visible heading
+        if (lockedIdRef.current !== null) return; // locked by click
         const visible = entries
           .filter(e => e.isIntersecting)
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
@@ -48,23 +81,71 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({
 
     headingEls.forEach(el => observerRef.current?.observe(el));
     return () => observerRef.current?.disconnect();
-  }, [open, items, previewPaneId]);
+  }, [open, items, previewPaneId, hasPreview]);
 
-  const scrollToHeading = (id: string) => {
-    const root = document.getElementById(previewPaneId);
-    if (!root) return;
-    const target = root.querySelector(`[data-heading-id="${id}"]`) as HTMLElement | null;
-    if (target) {
-      const offsetTop = target.offsetTop - 32;
-      root.scrollTo({ top: offsetTop, behavior: 'smooth' });
-      setActiveId(id);
+  // Track active heading from editor scroll position
+  useEffect(() => {
+    if (!open || editorTopLine === undefined || items.length === 0) return;
+    // In preview-only mode there is no editor to track
+    if (!onScrollToEditorLine && hasPreview) return;
+
+    // Find the last heading whose lineNumber <= editorTopLine
+    let activeItem: TocItem | undefined;
+    for (let i = items.length - 1; i >= 0; i--) {
+      if (items[i].lineNumber <= editorTopLine) {
+        activeItem = items[i];
+        break;
+      }
     }
-  };
+    if (activeItem) setActiveIfUnlocked(activeItem.id);
+  }, [open, hasPreview, editorTopLine, items, onScrollToEditorLine, setActiveIfUnlocked]);
+
+  // Auto-scroll the active TOC item into view within the TOC list
+  useEffect(() => {
+    if (!activeId || !tocListRef.current) return;
+    const activeBtn = tocListRef.current.querySelector('.toc-item-btn.active') as HTMLElement | null;
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [activeId]);
+
+  const scrollToHeading = useCallback((item: TocItem) => {
+    // Immediately lock to this id — no other source may change it until scroll ends
+    lockedIdRef.current = item.id;
+    setActiveId(item.id);
+
+    // Fallback: always release after 1200ms even if scrollend never fires
+    if (lockTimerRef.current) clearTimeout(lockTimerRef.current);
+    lockTimerRef.current = setTimeout(releaseLock, 1200);
+
+    // 1. Scroll preview pane (if visible)
+    if (hasPreview) {
+      const root = document.getElementById(previewPaneId);
+      if (root) {
+        const target = root.querySelector(`[data-heading-id="${item.id}"]`) as HTMLElement | null;
+        if (target) {
+          const containerRect = root.getBoundingClientRect();
+          const targetRect = target.getBoundingClientRect();
+          const scrollOffset = root.scrollTop + (targetRect.top - containerRect.top) - 32;
+          root.scrollTo({ top: scrollOffset, behavior: 'smooth' });
+
+          // Release lock once this scroll element finishes moving
+          root.addEventListener('scrollend', releaseLock, { once: true });
+        }
+      }
+    }
+
+    // 2. Scroll editor textarea to the heading's source line
+    if (onScrollToEditorLine) {
+      onScrollToEditorLine(item.lineNumber);
+    }
+  }, [hasPreview, previewPaneId, onScrollToEditorLine, releaseLock]);
 
   if (!open) return null;
 
   return (
     <aside
+      className="no-print"
       style={{
         width: '240px',
         flexShrink: 0,
@@ -151,7 +232,7 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({
       </div>
 
       {/* TOC list */}
-      <div style={{
+      <div ref={tocListRef} style={{
         flex: 1,
         overflowY: 'auto',
         padding: '8px 0',
@@ -177,7 +258,7 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({
               <button
                 key={item.id}
                 className={`toc-item-btn${isActive ? ' active' : ''}`}
-                onClick={() => scrollToHeading(item.id)}
+                onClick={() => scrollToHeading(item)}
                 title={item.text}
                 style={{
                   display: 'flex',

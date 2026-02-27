@@ -1,7 +1,8 @@
-import React, { useState, useCallback, useDeferredValue, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useDeferredValue, useEffect, useMemo, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import { Toolbar } from './Toolbar';
 import { MarkdownEditor } from './MarkdownEditor';
+import type { MarkdownEditorHandle } from './MarkdownEditor';
 import { MarkdownPreview } from './MarkdownPreview';
 import { TableOfContents } from './TableOfContents';
 import { useFileSystem } from '../hooks/useFileSystem';
@@ -69,6 +70,13 @@ export const Editor: React.FC = () => {
     () => localStorage.getItem('markdown-toc-open') === 'true'
   );
   const tocItems = useToc(deferredContent);
+
+  const editorRef = useRef<MarkdownEditorHandle>(null);
+  const [editorTopLine, setEditorTopLine] = useState(0);
+
+  const handleScrollToEditorLine = useCallback((lineNumber: number) => {
+    editorRef.current?.scrollToLine(lineNumber);
+  }, []);
 
   const handleTocToggle = useCallback(() => {
     setShowToc(prev => {
@@ -215,8 +223,8 @@ export const Editor: React.FC = () => {
         overflow: 'hidden',
         position: 'relative',
       }}>
-        {/* TOC panel — only visible when preview is showing */}
-        {showToc && showPreview && (
+        {/* TOC panel — visible in all view modes */}
+        {showToc && (
           <TableOfContents
             items={tocItems}
             open={showToc}
@@ -225,6 +233,9 @@ export const Editor: React.FC = () => {
               localStorage.setItem('markdown-toc-open', 'false');
             }}
             previewPaneId="markdown-preview"
+            onScrollToEditorLine={handleScrollToEditorLine}
+            editorTopLine={editorTopLine}
+            hasPreview={showPreview}
           />
         )}
         {/* Editor pane */}
@@ -241,9 +252,11 @@ export const Editor: React.FC = () => {
           >
             <div onPaste={handleImagePaste} style={{ height: '100%' }}>
               <MarkdownEditor
+                ref={editorRef}
                 value={content}
                 onChange={handleContentChange}
                 onScroll={setScrollPercentage}
+                onTopLineChange={setEditorTopLine}
               />
             </div>
           </div>
