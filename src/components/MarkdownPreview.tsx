@@ -44,6 +44,15 @@ export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
         }}
       >
         <style>{`
+          #markdown-preview .prose {
+            color: var(--text-on-surface);
+          }
+          #markdown-preview .prose strong {
+            color: var(--text-on-surface);
+          }
+          #markdown-preview .prose em {
+            color: var(--text-on-surface);
+          }
           #markdown-preview .prose h1,
           #markdown-preview .prose h2,
           #markdown-preview .prose h3,
@@ -71,26 +80,27 @@ export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
             line-height: 1.8;
           }
           #markdown-preview .prose a {
-            color: #b8862e;
+            color: var(--accent);
             text-decoration: underline;
             text-underline-offset: 3px;
-            text-decoration-color: rgba(184, 134, 46, 0.3);
+            text-decoration-color: var(--accent-subtle);
           }
           #markdown-preview .prose a:hover {
-            text-decoration-color: #b8862e;
+            color: var(--accent-hover);
+            text-decoration-color: var(--accent-hover);
           }
           #markdown-preview .prose code:not(pre code) {
             font-family: var(--font-mono);
             font-size: 0.85em;
             padding: 2px 6px;
-            background: rgba(0,0,0,0.06);
+            background: var(--bg-hover);
             border-radius: 4px;
-            color: #a0522d;
+            color: var(--accent);
             font-weight: 500;
           }
           #markdown-preview .prose blockquote {
             border-left: 3px solid var(--accent);
-            background: rgba(226, 163, 54, 0.06);
+            background: var(--accent-subtle);
             padding: 12px 20px;
             border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
             font-style: italic;
@@ -103,7 +113,7 @@ export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
             font-size: 0.9em;
           }
           #markdown-preview .prose th {
-            background: rgba(0,0,0,0.04);
+            background: var(--bg-hover);
             font-weight: 600;
             text-align: left;
             padding: 10px 14px;
@@ -114,7 +124,7 @@ export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
             border-bottom: 1px solid var(--border-surface);
           }
           #markdown-preview .prose tr:hover td {
-            background: rgba(0,0,0,0.02);
+            background: var(--bg-elevated);
           }
           #markdown-preview .prose img {
             max-width: 100%;

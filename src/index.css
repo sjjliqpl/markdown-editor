@@ -29,19 +29,19 @@
   --bg-primary: #1a1a1e;
   --bg-secondary: #222226;
   --bg-elevated: #2a2a2f;
-  --bg-surface: #faf9f7;
-  --bg-surface-warm: #f5f3ef;
+  --bg-surface: #1e1e23;
+  --bg-surface-warm: #222228;
   --bg-hover: #32323a;
 
   --text-primary: #e8e6e3;
   --text-secondary: #9d9b97;
   --text-muted: #6b6966;
-  --text-on-surface: #2c2a26;
-  --text-on-surface-secondary: #6b6764;
+  --text-on-surface: #dedad5;
+  --text-on-surface-secondary: #9d9a95;
 
   --border: #32323a;
   --border-subtle: #2a2a2f;
-  --border-surface: #e5e2dc;
+  --border-surface: #32323a;
 
   color-scheme: dark;
 }
