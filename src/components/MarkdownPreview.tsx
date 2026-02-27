@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef, useImperativeHandle } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -18,21 +18,33 @@ function extractText(children: React.ReactNode): string {
   return '';
 }
 
+export interface MarkdownPreviewHandle {
+  /** Scroll the preview pane to a given percentage (0-1) without triggering React state */
+  scrollToPercentage: (percentage: number) => void;
+}
+
 interface MarkdownPreviewProps {
   content: string;
-  scrollPercentage?: number;
   fontFamily?: FontFamily;
 }
 
-export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
+const MarkdownPreviewInner: React.ForwardRefRenderFunction<MarkdownPreviewHandle, MarkdownPreviewProps> = ({
   content,
-  scrollPercentage = 0,
   fontFamily = 'serif',
-}) => {
+}, ref) => {
   const previewRef = React.useRef<HTMLDivElement>(null);
   const [isDark, setIsDark] = React.useState(true);
   // heading counter — reset on every render so IDs are stable
   const headingIndexRef = React.useRef(0);
+
+  useImperativeHandle(ref, () => ({
+    scrollToPercentage: (percentage: number) => {
+      const el = previewRef.current;
+      if (!el) return;
+      const { scrollHeight, clientHeight } = el;
+      el.scrollTop = percentage * (scrollHeight - clientHeight);
+    },
+  }), []);
 
   // Resolve actual CSS font value from fontFamily id
   const fontCssMap: Record<string, string> = {
@@ -73,13 +85,6 @@ export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
     };
   }, []);
 
-  React.useEffect(() => {
-    if (previewRef.current && scrollPercentage !== undefined) {
-      const { scrollHeight, clientHeight } = previewRef.current;
-      const scrollTop = scrollPercentage * (scrollHeight - clientHeight);
-      previewRef.current.scrollTop = scrollTop;
-    }
-  }, [scrollPercentage]);
 
   return (
     <div
@@ -275,3 +280,6 @@ export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
     </div>
   );
 };
+
+export const MarkdownPreview = React.memo(forwardRef(MarkdownPreviewInner));
+

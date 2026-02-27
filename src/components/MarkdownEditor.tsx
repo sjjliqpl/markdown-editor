@@ -28,6 +28,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
 
   // Debounce timer ref for history push
   const historyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // RAF handle for scroll throttling
+  const scrollRafRef = useRef<number | null>(null);
 
   /** Compute the line-height of the textarea by measuring a single line */
   const getLineHeight = useCallback((): number => {
@@ -54,24 +56,28 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
   useImperativeHandle(ref, () => ({ scrollToLine }), [scrollToLine]);
 
   const handleScroll = useCallback(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
+    if (scrollRafRef.current !== null) return; // already scheduled
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      const textarea = textareaRef.current;
+      if (!textarea) return;
 
-    const { scrollTop, scrollHeight, clientHeight } = textarea;
+      const { scrollTop, scrollHeight, clientHeight } = textarea;
 
-    // Report scroll percentage for preview sync
-    if (onScroll && scrollHeight - clientHeight > 0) {
-      const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
-      onScroll(scrollPercentage);
-    }
+      // Report scroll percentage for preview sync
+      if (onScroll && scrollHeight - clientHeight > 0) {
+        const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
+        onScroll(scrollPercentage);
+      }
 
-    // Report the top visible line number to parent
-    if (onTopLineChange) {
-      const lineH = getLineHeight();
-      const paddingTop = parseFloat(getComputedStyle(textarea).paddingTop) || 24;
-      const topLine = Math.floor((scrollTop + paddingTop) / lineH);
-      onTopLineChange(Math.max(0, topLine));
-    }
+      // Report the top visible line number to parent
+      if (onTopLineChange) {
+        const lineH = getLineHeight();
+        const paddingTop = parseFloat(getComputedStyle(textarea).paddingTop) || 24;
+        const topLine = Math.floor((scrollTop + paddingTop) / lineH);
+        onTopLineChange(Math.max(0, topLine));
+      }
+    });
   }, [onScroll, onTopLineChange, getLineHeight]);
 
   const handleDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
@@ -198,6 +204,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
   useEffect(() => {
     return () => {
       if (historyTimer.current) clearTimeout(historyTimer.current);
+      if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current);
     };
   }, []);
 

@@ -4,6 +4,7 @@ import { Toolbar } from './Toolbar';
 import { MarkdownEditor } from './MarkdownEditor';
 import type { MarkdownEditorHandle } from './MarkdownEditor';
 import { MarkdownPreview } from './MarkdownPreview';
+import type { MarkdownPreviewHandle } from './MarkdownPreview';
 import { TableOfContents } from './TableOfContents';
 import { useFileSystem } from '../hooks/useFileSystem';
 import { useAutoSave } from '../hooks/useAutoSave';
@@ -53,7 +54,6 @@ export const Editor: React.FC = () => {
   const [content, setContent] = useState<string>(
     () => localStorage.getItem('markdown-autosave') || INITIAL_CONTENT
   );
-  const [scrollPercentage, setScrollPercentage] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>('split');
   const deferredContent = useDeferredValue(content);
 
@@ -72,6 +72,7 @@ export const Editor: React.FC = () => {
   const tocItems = useToc(deferredContent);
 
   const editorRef = useRef<MarkdownEditorHandle>(null);
+  const previewRef = useRef<MarkdownPreviewHandle>(null);
   const [editorTopLine, setEditorTopLine] = useState(0);
 
   const handleScrollToEditorLine = useCallback((lineNumber: number) => {
@@ -255,7 +256,7 @@ export const Editor: React.FC = () => {
                 ref={editorRef}
                 value={content}
                 onChange={handleContentChange}
-                onScroll={setScrollPercentage}
+                onScroll={viewMode === 'split' ? (pct) => previewRef.current?.scrollToPercentage(pct) : undefined}
                 onTopLineChange={setEditorTopLine}
               />
             </div>
@@ -271,8 +272,8 @@ export const Editor: React.FC = () => {
             animation: 'fadeIn 0.2s ease-out',
           }}>
             <MarkdownPreview
+              ref={previewRef}
               content={deferredContent}
-              scrollPercentage={viewMode === 'split' ? scrollPercentage : undefined}
               fontFamily={fontFamily}
             />
           </div>
