@@ -7,6 +7,7 @@ import { useFileSystem } from '../hooks/useFileSystem';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useTheme } from '../hooks/useTheme';
 import { useLocale } from '../hooks/useLocale';
+import { useFontFamily } from '../hooks/useFontFamily';
 import { t } from '../i18n';
 
 const INITIAL_CONTENT = `# Welcome to Markdown Editor
@@ -61,6 +62,7 @@ export const Editor: React.FC = () => {
   useAutoSave(content);
   const { themeMode, cycleTheme } = useTheme();
   const { locale, toggleLocale } = useLocale();
+  const { fontFamily, setFontFamily } = useFontFamily();
 
   const handleContentChange = useCallback((newContent: string) => {
     setContent(newContent);
@@ -187,6 +189,8 @@ export const Editor: React.FC = () => {
         onThemeCycle={cycleTheme}
         locale={locale}
         onToggleLocale={toggleLocale}
+        fontFamily={fontFamily}
+        onFontChange={setFontFamily}
       />
 
       <div style={{
@@ -248,6 +252,7 @@ export const Editor: React.FC = () => {
             <MarkdownPreview
               content={deferredContent}
               scrollPercentage={viewMode === 'split' ? scrollPercentage : undefined}
+              fontFamily={fontFamily}
             />
           </div>
         )}

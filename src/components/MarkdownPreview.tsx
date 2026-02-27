@@ -3,17 +3,61 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import type { FontFamily } from '../hooks/useFontFamily';
 
 interface MarkdownPreviewProps {
   content: string;
   scrollPercentage?: number;
+  fontFamily?: FontFamily;
 }
 
 export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
   content,
   scrollPercentage = 0,
+  fontFamily = 'serif',
 }) => {
   const previewRef = React.useRef<HTMLDivElement>(null);
+  const [isDark, setIsDark] = React.useState(true);
+
+  // Resolve actual CSS font value from fontFamily id
+  const fontCssMap: Record<string, string> = {
+    serif:          'var(--font-serif)',
+    lora:           'var(--font-lora)',
+    sans:           'var(--font-ui)',
+    inter:          'var(--font-inter)',
+    mono:           'var(--font-mono)',
+    'noto-serif-sc': 'var(--font-noto-serif-sc)',
+    'noto-sans-sc':  'var(--font-noto-sans-sc)',
+    zcool:          'var(--font-zcool)',
+  };
+  const resolvedFont = fontCssMap[fontFamily] ?? 'var(--font-serif)';
+
+  React.useEffect(() => {
+    // Check current theme
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isCurrentlyDark = currentTheme === 'dark' || (currentTheme !== 'light' && prefersDark);
+    setIsDark(isCurrentlyDark);
+
+    // Listen for theme changes
+    const handleThemeChange = () => {
+      const theme = document.documentElement.getAttribute('data-theme');
+      const prefersD = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setIsDark(theme === 'dark' || (theme !== 'light' && prefersD));
+    };
+
+    const observer = new MutationObserver(handleThemeChange);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    mq.addEventListener('change', handleThemeChange);
+
+    return () => {
+      observer.disconnect();
+      mq.removeEventListener('change', handleThemeChange);
+    };
+  }, []);
 
   React.useEffect(() => {
     if (previewRef.current && scrollPercentage !== undefined) {
@@ -33,14 +77,14 @@ export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
         padding: '32px 40px',
         background: 'var(--bg-surface)',
         color: 'var(--text-on-surface)',
-        fontFamily: 'var(--font-serif)',
+        fontFamily: resolvedFont,
         fontSize: '15px',
         lineHeight: '1.75',
       }}
     >
       <div className="prose prose-stone max-w-none"
         style={{
-          fontFamily: 'var(--font-serif)',
+          fontFamily: resolvedFont,
         }}
       >
         <style>{`
@@ -146,7 +190,7 @@ export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
           }
           #markdown-preview .prose pre {
             border-radius: var(--radius-md) !important;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
             font-size: 0.85em !important;
           }
         `}</style>
@@ -157,7 +201,7 @@ export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
               const match = /language-(\w+)/.exec(className || '');
               return !inline && match ? (
                 <SyntaxHighlighter
-                  style={oneDark}
+                  style={isDark ? oneDark : oneLight}
                   language={match[1]}
                   PreTag="div"
                   customStyle={{
@@ -165,6 +209,12 @@ export const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
                     fontSize: '13px',
                     lineHeight: '1.6',
                     fontFamily: 'var(--font-mono)',
+                    backgroundColor: isDark ? '#282c34' : '#f0f0f0',
+                  }}
+                  codeTagProps={{
+                    style: {
+                      background: isDark ? '#282c34' : '#f0f0f0',
+                    },
                   }}
                   {...props}
                 >

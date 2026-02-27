@@ -7,7 +7,7 @@ A cool and crisp winter-inspired theme that conveys clarity, precision, and prof
 - **Ice Blue**: `#d4e4f7` - Light backgrounds and highlights
 - **Steel Blue**: `#4a6fa5` - Primary accent color
 - **Silver**: `#c0c0c0` - Metallic accent elements
-- **Crisp White**: `#fafafa` - Clean backgrounds and text
+- **Crisp White**: `#f0f0f0` - Clean backgrounds and text
 
 ## Typography
 

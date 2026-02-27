@@ -16,6 +16,11 @@
   --font-ui: 'DM Sans', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
   --font-serif: 'Source Serif 4', 'Georgia', serif;
+  --font-inter: 'Inter', system-ui, sans-serif;
+  --font-lora: 'Lora', 'Georgia', serif;
+  --font-noto-serif-sc: 'Noto Serif SC', 'Source Serif 4', serif;
+  --font-noto-sans-sc: 'Noto Sans SC', 'DM Sans', sans-serif;
+  --font-zcool: 'ZCOOL XiaoWei', 'Noto Serif SC', serif;
 
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.15);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.2);

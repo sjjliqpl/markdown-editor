@@ -25,6 +25,17 @@ export interface Translation {
   exportImageNoPreview: string;
   exportImageFailed: string;
   langToggle: string;
+  fontSerif: string;
+  fontSans: string;
+  fontMono: string;
+  fontLabel: string;
+  fontInter: string;
+  fontLora: string;
+  fontNotoSerifSc: string;
+  fontNotoSansSc: string;
+  fontZcool: string;
+  fontGroupEn: string;
+  fontGroupZh: string;
 }
 
 const en: Translation = {
@@ -52,6 +63,17 @@ const en: Translation = {
   exportImageNoPreview: 'Please switch to Preview or Split view before exporting as image.',
   exportImageFailed: 'Export image failed, please try again.',
   langToggle: '中文',
+  fontSerif: 'Serif',
+  fontSans: 'Sans',
+  fontMono: 'Mono',
+  fontLabel: 'Font',
+  fontInter: 'Inter',
+  fontLora: 'Lora',
+  fontNotoSerifSc: 'Noto Serif SC',
+  fontNotoSansSc: 'Noto Sans SC',
+  fontZcool: 'ZCOOL XiaoWei',
+  fontGroupEn: 'Latin',
+  fontGroupZh: 'Chinese',
 };
 
 const zh: Translation = {
@@ -79,6 +101,17 @@ const zh: Translation = {
   exportImageNoPreview: '请切换到预览或分屏视图后再导出图片。',
   exportImageFailed: '导出图片失败，请重试。',
   langToggle: 'English',
+  fontSerif: '衬线',
+  fontSans: '无衬线',
+  fontMono: '等宽',
+  fontLabel: '字体',
+  fontInter: 'Inter',
+  fontLora: 'Lora',
+  fontNotoSerifSc: '思源宋体',
+  fontNotoSansSc: '思源黑体',
+  fontZcool: '站酷小薇体',
+  fontGroupEn: '西文',
+  fontGroupZh: '中文',
 };
 
 const translations: Record<Locale, Translation> = { en, zh };
