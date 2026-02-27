@@ -1,10 +1,13 @@
 import React, { useState, useCallback, useDeferredValue, useEffect, useMemo } from 'react';
+import html2canvas from 'html2canvas';
 import { Toolbar } from './Toolbar';
 import { MarkdownEditor } from './MarkdownEditor';
 import { MarkdownPreview } from './MarkdownPreview';
 import { useFileSystem } from '../hooks/useFileSystem';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useTheme } from '../hooks/useTheme';
+import { useLocale } from '../hooks/useLocale';
+import { t } from '../i18n';
 
 const INITIAL_CONTENT = `# Welcome to Markdown Editor
 
@@ -57,6 +60,7 @@ export const Editor: React.FC = () => {
 
   useAutoSave(content);
   const { themeMode, cycleTheme } = useTheme();
+  const { locale, toggleLocale } = useLocale();
 
   const handleContentChange = useCallback((newContent: string) => {
     setContent(newContent);
@@ -65,6 +69,51 @@ export const Editor: React.FC = () => {
   const handleExportPDF = useCallback(() => {
     window.print();
   }, []);
+
+  const handleExportImage = useCallback(async () => {
+    const tr = t(locale);
+    // Use the inner scrollable preview element to capture full content height
+    const previewEl = document.getElementById('markdown-preview') as HTMLDivElement | null;
+    if (!previewEl) {
+      alert(tr.exportImageNoPreview);
+      return;
+    }
+    // Temporarily expand the element to its full scroll height so html2canvas
+    // captures all content, not just the visible viewport portion.
+    const originalHeight = previewEl.style.height;
+    const originalOverflow = previewEl.style.overflowY;
+    const originalMaxHeight = previewEl.style.maxHeight;
+    previewEl.style.height = previewEl.scrollHeight + 'px';
+    previewEl.style.overflowY = 'visible';
+    previewEl.style.maxHeight = 'none';
+    try {
+      const bgColor = getComputedStyle(document.documentElement)
+        .getPropertyValue('--bg-surface').trim() || '#ffffff';
+      const canvas = await html2canvas(previewEl, {
+        useCORS: true,
+        allowTaint: true,
+        scale: 2,
+        backgroundColor: bgColor,
+        height: previewEl.scrollHeight,
+        windowHeight: previewEl.scrollHeight,
+        scrollY: -window.scrollY,
+      });
+      const link = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const baseName = fileName.replace(/\.[^.]+$/, '') || `Untitled_${date}`;
+      link.download = `${baseName}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (err) {
+      console.error('Export image failed:', err);
+      alert(tr.exportImageFailed);
+    } finally {
+      // Always restore the original styles
+      previewEl.style.height = originalHeight;
+      previewEl.style.overflowY = originalOverflow;
+      previewEl.style.maxHeight = originalMaxHeight;
+    }
+  }, [fileName, locale]);
 
   const handleImagePaste = useCallback(
     (e: React.ClipboardEvent) => {
@@ -128,6 +177,7 @@ export const Editor: React.FC = () => {
         onSave={saveFile}
         onSaveAs={saveFileAs}
         onExportPDF={handleExportPDF}
+        onExportImage={handleExportImage}
         fileName={fileName}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
@@ -135,6 +185,8 @@ export const Editor: React.FC = () => {
         charCount={charCount}
         themeMode={themeMode}
         onThemeCycle={cycleTheme}
+        locale={locale}
+        onToggleLocale={toggleLocale}
       />
 
       <div style={{
@@ -214,26 +266,33 @@ export const Editor: React.FC = () => {
         fontFamily: 'var(--font-mono)',
         color: 'var(--text-muted)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              background: '#4ade80',
-              display: 'inline-block',
-            }} />
-            Auto-saved
-          </span>
-          <span>Markdown</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <span>UTF-8</span>
-          <span>{content.split('\n').length} lines</span>
-          <span>
-            {viewMode === 'split' ? 'Split' : viewMode === 'editor' ? 'Editor' : 'Preview'}
-          </span>
-        </div>
+        {(() => {
+          const tr = t(locale);
+          return (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: '#4ade80',
+                    display: 'inline-block',
+                  }} />
+                  {tr.autoSaved}
+                </span>
+                <span>{tr.markdown}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <span>UTF-8</span>
+                <span>{content.split('\n').length} {tr.lines}</span>
+                <span>
+                  {viewMode === 'split' ? tr.modeSplit : viewMode === 'editor' ? tr.modeEditor : tr.modePreview}
+                </span>
+              </div>
+            </>
+          );
+        })()}
       </div>
     </div>
   );

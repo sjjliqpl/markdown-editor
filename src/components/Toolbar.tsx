@@ -12,8 +12,12 @@ import {
   Sun,
   Moon,
   SunMoon,
+  Image,
+  Languages,
 } from 'lucide-react';
 import type { ThemeMode } from '../hooks/useTheme';
+import type { Locale } from '../i18n';
+import { t } from '../i18n';
 
 type ViewMode = 'split' | 'editor' | 'preview';
 
@@ -22,6 +26,7 @@ interface ToolbarProps {
   onSave: () => void;
   onSaveAs: () => void;
   onExportPDF: () => void;
+  onExportImage: () => void;
   fileName: string;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
@@ -29,6 +34,8 @@ interface ToolbarProps {
   charCount: number;
   themeMode: ThemeMode;
   onThemeCycle: () => void;
+  locale: Locale;
+  onToggleLocale: () => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -36,6 +43,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onSave,
   onSaveAs,
   onExportPDF,
+  onExportImage,
   fileName,
   viewMode,
   onViewModeChange,
@@ -43,8 +51,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   charCount,
   themeMode,
   onThemeCycle,
+  locale,
+  onToggleLocale,
 }) => {
   const [showFileMenu, setShowFileMenu] = useState(false);
+  const tr = t(locale);
 
   return (
     <div className="no-print" style={{
@@ -61,11 +72,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     }}>
       {/* Left: Logo + File name */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{
             width: '28px',
             height: '28px',
@@ -84,16 +91,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             color: 'var(--text-primary)',
             letterSpacing: '-0.01em',
           }}>
-            Markdown Editor
+            {tr.appName}
           </span>
         </div>
 
-        <div style={{
-          width: '1px',
-          height: '20px',
-          background: 'var(--border)',
-          margin: '0 4px',
-        }} />
+        <div style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 4px' }} />
 
         {/* File menu */}
         <div style={{ position: 'relative' }}>
@@ -141,11 +143,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               animation: 'tooltipFadeIn 0.15s ease-out',
               zIndex: 100,
             }}>
-              <MenuItem icon={<FolderOpen size={14} />} label="Open File" shortcut="⌘O" onClick={() => { onOpen(); setShowFileMenu(false); }} />
-              <MenuItem icon={<Save size={14} />} label="Save" shortcut="⌘S" onClick={() => { onSave(); setShowFileMenu(false); }} />
-              <MenuItem icon={<Download size={14} />} label="Save As..." onClick={() => { onSaveAs(); setShowFileMenu(false); }} />
+              <MenuItem icon={<FolderOpen size={14} />} label={tr.openFile} shortcut="⌘O" onClick={() => { onOpen(); setShowFileMenu(false); }} />
+              <MenuItem icon={<Save size={14} />} label={tr.save} shortcut="⌘S" onClick={() => { onSave(); setShowFileMenu(false); }} />
+              <MenuItem icon={<Download size={14} />} label={tr.saveAs} onClick={() => { onSaveAs(); setShowFileMenu(false); }} />
               <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
-              <MenuItem icon={<Printer size={14} />} label="Export PDF" shortcut="⌘P" onClick={() => { onExportPDF(); setShowFileMenu(false); }} accent />
+              <MenuItem icon={<Image size={14} />} label={tr.exportImage} onClick={() => { onExportImage(); setShowFileMenu(false); }} accent />
             </div>
           )}
         </div>
@@ -160,24 +162,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         padding: '3px',
         gap: '2px',
       }}>
-        <ViewToggle
-          icon={<PanelLeft size={14} />}
-          tooltip="Editor Only"
-          active={viewMode === 'editor'}
-          onClick={() => onViewModeChange('editor')}
-        />
-        <ViewToggle
-          icon={<Columns2 size={14} />}
-          tooltip="Split View"
-          active={viewMode === 'split'}
-          onClick={() => onViewModeChange('split')}
-        />
-        <ViewToggle
-          icon={<PanelRight size={14} />}
-          tooltip="Preview Only"
-          active={viewMode === 'preview'}
-          onClick={() => onViewModeChange('preview')}
-        />
+        <ViewToggle icon={<PanelLeft size={14} />} tooltip={tr.editorOnly} active={viewMode === 'editor'} onClick={() => onViewModeChange('editor')} />
+        <ViewToggle icon={<Columns2 size={14} />} tooltip={tr.splitView} active={viewMode === 'split'} onClick={() => onViewModeChange('split')} />
+        <ViewToggle icon={<PanelRight size={14} />} tooltip={tr.previewOnly} active={viewMode === 'preview'} onClick={() => onViewModeChange('preview')} />
       </div>
 
       {/* Right: Stats + Actions */}
@@ -191,25 +178,51 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           fontFamily: 'var(--font-mono)',
           fontWeight: 500,
         }}>
-          <span>{wordCount.toLocaleString()} words</span>
+          <span>{wordCount.toLocaleString()} {tr.words}</span>
           <span style={{ opacity: 0.4 }}>·</span>
-          <span>{charCount.toLocaleString()} chars</span>
+          <span>{charCount.toLocaleString()} {tr.chars}</span>
         </div>
 
-        <div style={{
-          width: '1px',
-          height: '20px',
-          background: 'var(--border)',
-        }} />
+        <div style={{ width: '1px', height: '20px', background: 'var(--border)' }} />
 
         {/* Theme toggle */}
-        <ThemeToggle mode={themeMode} onCycle={onThemeCycle} />
+        <ThemeToggle mode={themeMode} onCycle={onThemeCycle} locale={locale} />
 
-        <div style={{
-          width: '1px',
-          height: '20px',
-          background: 'var(--border)',
-        }} />
+        <div style={{ width: '1px', height: '20px', background: 'var(--border)' }} />
+
+        {/* Language toggle */}
+        <button
+          onClick={onToggleLocale}
+          title={tr.langToggle}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '4px 10px',
+            fontSize: '12px',
+            fontWeight: 500,
+            color: 'var(--text-secondary)',
+            background: 'var(--bg-hover)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-sm)',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-ui)',
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.color = 'var(--text-primary)';
+            e.currentTarget.style.borderColor = 'var(--accent)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.color = 'var(--text-secondary)';
+            e.currentTarget.style.borderColor = 'var(--border)';
+          }}
+        >
+          <Languages size={14} />
+          {tr.langToggle}
+        </button>
+
+        <div style={{ width: '1px', height: '20px', background: 'var(--border)' }} />
 
         <button
           onClick={onExportPDF}
@@ -236,10 +249,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
             e.currentTarget.style.transform = 'translateY(0)';
           }}
-          title="Export as PDF (⌘P)"
+          title={`${tr.print} (⌘P)`}
         >
           <Printer size={13} />
-          Export PDF
+          {tr.print}
         </button>
       </div>
     </div>
@@ -270,21 +283,13 @@ const MenuItem: React.FC<{
       fontFamily: 'var(--font-ui)',
       textAlign: 'left',
     }}
-    onMouseEnter={e => {
-      e.currentTarget.style.background = 'var(--bg-hover)';
-    }}
-    onMouseLeave={e => {
-      e.currentTarget.style.background = 'transparent';
-    }}
+    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
   >
     {icon}
     <span style={{ flex: 1 }}>{label}</span>
     {shortcut && (
-      <span style={{
-        fontSize: '11px',
-        color: 'var(--text-muted)',
-        fontFamily: 'var(--font-mono)',
-      }}>
+      <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
         {shortcut}
       </span>
     )}
@@ -329,18 +334,21 @@ const ViewToggle: React.FC<{
   </button>
 );
 
-const THEME_META: Record<ThemeMode, { icon: React.ReactNode; label: string; next: string }> = {
-  auto: { icon: <SunMoon size={15} />, label: 'Auto', next: 'Dark' },
-  dark: { icon: <Moon size={15} />, label: 'Dark', next: 'Light' },
-  light: { icon: <Sun size={15} />, label: 'Light', next: 'Auto' },
+const THEME_META: Record<ThemeMode, { icon: React.ReactNode; labelKey: 'themeAuto' | 'themeDark' | 'themeLight'; nextKey: 'themeAuto' | 'themeDark' | 'themeLight' }> = {
+  auto: { icon: <SunMoon size={15} />, labelKey: 'themeAuto', nextKey: 'themeDark' },
+  dark: { icon: <Moon size={15} />, labelKey: 'themeDark', nextKey: 'themeLight' },
+  light: { icon: <Sun size={15} />, labelKey: 'themeLight', nextKey: 'themeAuto' },
 };
 
-const ThemeToggle: React.FC<{ mode: ThemeMode; onCycle: () => void }> = ({ mode, onCycle }) => {
+const ThemeToggle: React.FC<{ mode: ThemeMode; onCycle: () => void; locale: Locale }> = ({ mode, onCycle, locale }) => {
   const meta = THEME_META[mode];
+  const tr = t(locale);
+  const label = tr[meta.labelKey];
+  const next = tr[meta.nextKey];
   return (
     <button
       onClick={onCycle}
-      title={`Theme: ${meta.label} — click for ${meta.next}`}
+      title={tr.themeNext(next)}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -366,8 +374,7 @@ const ThemeToggle: React.FC<{ mode: ThemeMode; onCycle: () => void }> = ({ mode,
       }}
     >
       {meta.icon}
-      {meta.label}
+      {label}
     </button>
   );
 };
-

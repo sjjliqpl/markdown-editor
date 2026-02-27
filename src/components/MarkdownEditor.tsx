@@ -1,4 +1,6 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
+import { FormatToolbar } from './FormatToolbar';
+import { useHistory } from '../hooks/useHistory';
 
 interface MarkdownEditorProps {
   value: string;
@@ -14,6 +16,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   onImageUpload,
 }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { canUndo, canRedo, pushHistory, undo, redo } = useHistory(value);
+
+  // Debounce timer ref for history push
+  const historyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleScroll = useCallback(() => {
     if (textareaRef.current && onScroll) {
@@ -28,7 +34,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const handleDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
     e.preventDefault();
     const files = e.dataTransfer.files;
-
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       if (file.type.startsWith('image/')) {
@@ -38,15 +43,11 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         if (textarea) {
           const start = textarea.selectionStart;
           const end = textarea.selectionEnd;
-          const newContent =
-            value.substring(0, start) +
-            imageMarkdown +
-            value.substring(end);
+          const newContent = value.substring(0, start) + imageMarkdown + value.substring(end);
           onChange(newContent);
+          pushHistory(newContent, start + imageMarkdown.length, start + imageMarkdown.length);
         }
-        if (onImageUpload) {
-          onImageUpload(file);
-        }
+        if (onImageUpload) onImageUpload(file);
       }
     }
   };
@@ -55,8 +56,51 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     e.preventDefault();
   };
 
-  // Handle Tab key for indent
+  // Called by textarea onChange — debounce history push
+  const handleChange = useCallback(
+    (newValue: string) => {
+      onChange(newValue);
+      if (historyTimer.current) clearTimeout(historyTimer.current);
+      historyTimer.current = setTimeout(() => {
+        const textarea = textareaRef.current;
+        pushHistory(newValue, textarea?.selectionStart ?? 0, textarea?.selectionEnd ?? 0);
+      }, 500);
+    },
+    [onChange, pushHistory]
+  );
+
+  const handleUndo = useCallback(() => {
+    const state = undo();
+    if (!state) return;
+    onChange(state.value);
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(state.selStart, state.selEnd);
+    });
+  }, [undo, onChange]);
+
+  const handleRedo = useCallback(() => {
+    const state = redo();
+    if (!state) return;
+    onChange(state.value);
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(state.selStart, state.selEnd);
+    });
+  }, [redo, onChange]);
+
+  // Push history immediately after format-toolbar actions (value changes from outside)
+  const prevValueRef = useRef(value);
+  useEffect(() => {
+    if (prevValueRef.current !== value) {
+      prevValueRef.current = value;
+      // Format toolbar already called pushHistory via applyFormat; skip debounce
+    }
+  }, [value]);
+
+  // Handle Tab key for indent + Cmd/Ctrl+Z/Y shortcuts
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const mod = e.metaKey || e.ctrlKey;
     if (e.key === 'Tab') {
       e.preventDefault();
       const textarea = textareaRef.current;
@@ -65,12 +109,54 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         const end = textarea.selectionEnd;
         const newContent = value.substring(0, start) + '  ' + value.substring(end);
         onChange(newContent);
+        pushHistory(newContent, start + 2, start + 2);
         requestAnimationFrame(() => {
           textarea.selectionStart = textarea.selectionEnd = start + 2;
         });
       }
+    } else if (mod && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault();
+      handleUndo();
+    } else if (mod && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+      e.preventDefault();
+      handleRedo();
+    } else if (mod && e.key === 'b') {
+      e.preventDefault();
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const s = textarea.selectionStart;
+        const en = textarea.selectionEnd;
+        const selected = value.substring(s, en) || 'bold text';
+        const newValue = value.substring(0, s) + '**' + selected + '**' + value.substring(en);
+        onChange(newValue);
+        pushHistory(newValue, s + 2, s + 2 + selected.length);
+        requestAnimationFrame(() => {
+          textarea.setSelectionRange(s + 2, s + 2 + selected.length);
+        });
+      }
+    } else if (mod && e.key === 'i') {
+      e.preventDefault();
+      const textarea = textareaRef.current;
+      if (textarea) {
+        const s = textarea.selectionStart;
+        const en = textarea.selectionEnd;
+        const selected = value.substring(s, en) || 'italic text';
+        const newValue = value.substring(0, s) + '*' + selected + '*' + value.substring(en);
+        onChange(newValue);
+        pushHistory(newValue, s + 1, s + 1 + selected.length);
+        requestAnimationFrame(() => {
+          textarea.setSelectionRange(s + 1, s + 1 + selected.length);
+        });
+      }
     }
   };
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (historyTimer.current) clearTimeout(historyTimer.current);
+    };
+  }, []);
 
   return (
     <div style={{
@@ -79,10 +165,20 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       flexDirection: 'column',
       background: 'var(--bg-primary)',
     }}>
+      <FormatToolbar
+        textareaRef={textareaRef}
+        value={value}
+        onChange={onChange}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        pushHistory={pushHistory}
+      />
       <textarea
         ref={textareaRef}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => handleChange(e.target.value)}
         onScroll={handleScroll}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
