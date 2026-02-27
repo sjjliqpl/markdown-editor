@@ -177,3 +177,10 @@ button, a, input, textarea {
   0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
   50% { box-shadow: 0 0 12px 2px var(--accent-glow); }
 }
+
+/* Spin animation for loading spinner */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+

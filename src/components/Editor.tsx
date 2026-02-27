@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useDeferredValue, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useDeferredValue, useEffect, useMemo, useRef, useTransition } from 'react';
 import html2canvas from 'html2canvas';
 import { Toolbar } from './Toolbar';
 import { MarkdownEditor } from './MarkdownEditor';
@@ -57,15 +57,35 @@ export const Editor: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('split');
   const deferredContent = useDeferredValue(content);
 
+  const [isPending, startTransition] = useTransition();
+
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    startTransition(() => {
+      setViewMode(mode);
+    });
+  }, []);
+
   const { fileName, openFile, saveFile, saveFileAs } = useFileSystem(
     content,
     setContent
   );
 
   useAutoSave(content);
-  const { themeMode, cycleTheme } = useTheme();
+  const { themeMode, cycleTheme: cycleThemeRaw } = useTheme();
   const { locale, toggleLocale } = useLocale();
-  const { fontFamily, setFontFamily } = useFontFamily();
+  const { fontFamily, setFontFamily: setFontFamilyRaw } = useFontFamily();
+
+  const cycleTheme = useCallback(() => {
+    startTransition(() => {
+      cycleThemeRaw();
+    });
+  }, [cycleThemeRaw]);
+
+  const setFontFamily = useCallback((font: Parameters<typeof setFontFamilyRaw>[0]) => {
+    startTransition(() => {
+      setFontFamilyRaw(font);
+    });
+  }, [setFontFamilyRaw]);
   const [showToc, setShowToc] = useState<boolean>(
     () => localStorage.getItem('markdown-toc-open') === 'true'
   );
@@ -197,6 +217,64 @@ export const Editor: React.FC = () => {
       flexDirection: 'column',
       background: 'var(--bg-primary)',
     }}>
+      {/* Loading overlay during heavy transitions */}
+      {isPending && (
+        <div
+          className="no-print"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.18)',
+            backdropFilter: 'blur(2px)',
+            WebkitBackdropFilter: 'blur(2px)',
+            animation: 'fadeIn 0.1s ease-out',
+          }}
+        >
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '12px',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '20px 28px',
+            boxShadow: 'var(--shadow-lg)',
+          }}>
+            <svg
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              style={{ animation: 'spin 0.8s linear infinite' }}
+            >
+              <circle
+                cx="12" cy="12" r="10"
+                stroke="var(--border)"
+                strokeWidth="2.5"
+              />
+              <path
+                d="M12 2a10 10 0 0 1 10 10"
+                stroke="var(--accent)"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+            <span style={{
+              fontSize: '13px',
+              color: 'var(--text-secondary)',
+              fontFamily: 'var(--font-ui)',
+              whiteSpace: 'nowrap',
+            }}>
+              {locale === 'zh' ? '正在渲染…' : 'Rendering…'}
+            </span>
+          </div>
+        </div>
+      )}
       <Toolbar
         onOpen={openFile}
         onSave={saveFile}
@@ -205,7 +283,7 @@ export const Editor: React.FC = () => {
         onExportImage={handleExportImage}
         fileName={fileName}
         viewMode={viewMode}
-        onViewModeChange={setViewMode}
+        onViewModeChange={handleViewModeChange}
         wordCount={wordCount}
         charCount={charCount}
         themeMode={themeMode}
@@ -269,8 +347,9 @@ export const Editor: React.FC = () => {
           <div id="preview-pane" style={{
             flex: 1,
             minWidth: 0,
-            transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            transition: 'flex 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease',
             animation: 'fadeIn 0.2s ease-out',
+            opacity: content !== deferredContent ? 0.6 : 1,
           }}>
             <MarkdownPreview
               ref={previewRef}
