@@ -116,3 +116,4 @@ src/
 ## 📝 License
 
 MIT
+\nLive demo: https://sjjliqpl.github.io/markdown-editor/
