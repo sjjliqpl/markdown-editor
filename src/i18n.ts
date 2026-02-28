@@ -6,6 +6,7 @@ export interface Translation {
   save: string;
   saveAs: string;
   exportImage: string;
+  exportPdf: string;
   print: string;
   editorOnly: string;
   splitView: string;
@@ -24,6 +25,8 @@ export interface Translation {
   modePreview: string;
   exportImageNoPreview: string;
   exportImageFailed: string;
+  exportPdfNoPreview: string;
+  exportPdfFailed: string;
   langToggle: string;
   fontSerif: string;
   fontSans: string;
@@ -45,6 +48,7 @@ const en: Translation = {
   save: 'Save',
   saveAs: 'Save As...',
   exportImage: 'Export Image',
+  exportPdf: 'Export PDF',
   print: 'Print',
   editorOnly: 'Editor Only',
   splitView: 'Split View',
@@ -63,6 +67,8 @@ const en: Translation = {
   modePreview: 'Preview',
   exportImageNoPreview: 'Please switch to Preview or Split view before exporting as image.',
   exportImageFailed: 'Export image failed, please try again.',
+  exportPdfNoPreview: 'Please switch to Preview or Split view before exporting as PDF.',
+  exportPdfFailed: 'Export PDF failed, please try again.',
   langToggle: '中文',
   fontSerif: 'Serif',
   fontSans: 'Sans',
@@ -84,6 +90,7 @@ const zh: Translation = {
   save: '保存',
   saveAs: '另存为…',
   exportImage: '导出图片',
+  exportPdf: '导出 PDF',
   print: '打印',
   editorOnly: '仅编辑',
   splitView: '分屏视图',
@@ -102,6 +109,8 @@ const zh: Translation = {
   modePreview: '预览',
   exportImageNoPreview: '请切换到预览或分屏视图后再导出图片。',
   exportImageFailed: '导出图片失败，请重试。',
+  exportPdfNoPreview: '请切换到预览或分屏视图后再导出 PDF。',
+  exportPdfFailed: '导出 PDF 失败，请重试。',
   langToggle: 'English',
   fontSerif: '衬线',
   fontSans: '无衬线',

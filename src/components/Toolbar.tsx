@@ -16,6 +16,7 @@ import {
   Languages,
   Type,
   List,
+  FileDown,
 } from 'lucide-react';
 import type { ThemeMode } from '../hooks/useTheme';
 import type { Locale } from '../i18n';
@@ -30,6 +31,7 @@ interface ToolbarProps {
   onSave: () => void;
   onSaveAs: () => void;
   onExportPDF: () => void;
+  onExportPdfFile: () => void;
   onExportImage: () => void;
   fileName: string;
   viewMode: ViewMode;
@@ -51,6 +53,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onSave,
   onSaveAs,
   onExportPDF,
+  onExportPdfFile,
   onExportImage,
   fileName,
   viewMode,
@@ -160,6 +163,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               <MenuItem icon={<Download size={14} />} label={tr.saveAs} onClick={() => { onSaveAs(); setShowFileMenu(false); }} />
               <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
               <MenuItem icon={<Image size={14} />} label={tr.exportImage} onClick={() => { onExportImage(); setShowFileMenu(false); }} accent />
+              <MenuItem icon={<FileDown size={14} />} label={tr.exportPdf} onClick={() => { onExportPdfFile(); setShowFileMenu(false); }} accent />
             </div>
           )}
         </div>
