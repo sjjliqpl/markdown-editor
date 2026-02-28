@@ -1,27 +1,81 @@
 # Markdown Editor
 
-一个极简、高性能的 Web 版 Markdown 编辑器，支持实时预览和专业的 PDF 打印/导出功能。
+一个极简、高性能的 Web 版 Markdown 编辑器，支持实时预览、多主题切换、目录导航、图片导出和专业的 PDF 打印/导出功能。
+
+🌐 **Live Demo**: [https://sjjliqpl.github.io/markdown-editor/](https://sjjliqpl.github.io/markdown-editor/)
+
+---
+
+## 📸 应用截图
+
+### 分屏视图（默认深色主题）
+
+![分屏视图 - 深色主题](docs/screenshots/01-split-view.png)
+
+### 仅预览模式
+
+![仅预览模式](docs/screenshots/02-preview-only.png)
+
+### 仅编辑模式
+
+![仅编辑模式](docs/screenshots/03-editor-only.png)
+
+### 浅色主题
+
+![浅色主题](docs/screenshots/04-light-theme.png)
+
+### 目录面板（浅色）
+
+![目录面板 - 浅色主题](docs/screenshots/05-toc-light.png)
+
+### 目录面板（深色）
+
+![目录面板 - 深色主题](docs/screenshots/06-toc-dark.png)
+
+### 中文界面
+
+![中文界面](docs/screenshots/07-chinese-mode.png)
+
+---
 
 ## ✨ 核心特性
 
-- 📝 **实时预览** - 编辑区和预览区实时同步，支持同步滚动
-- 📁 **文件操作** - 支持打开、保存和另存为 Markdown 文件
-- 🖨️ **PDF 导出** - 专业的打印样式，一键生成 PDF
-- 🎨 **语法高亮** - 代码块语法高亮显示
-- 📸 **图片支持** - 支持拖拽上传和粘贴图片
-- 💾 **自动保存** - 自动保存到本地存储，防止内容丢失
-- ⌨️ **快捷键** - 支持常用快捷键操作
+| 功能 | 描述 |
+|------|------|
+| 📝 **实时预览** | 编辑区和预览区实时同步渲染，支持按百分比同步滚动 |
+| 🖥️ **三种视图模式** | 分屏视图 / 仅编辑 / 仅预览，可随时切换 |
+| 📑 **目录导航** | 自动从文档标题生成目录，点击跳转，高亮当前位置 |
+| 📁 **文件操作** | 打开、保存、另存为 `.md` 文件，支持 File System Access API |
+| 🖨️ **PDF 导出** | 使用浏览器原生打印，优化 A4 打印样式，自动隐藏 UI |
+| 🖼️ **图片导出** | 使用 `html2canvas` 将预览区内容导出为高清 PNG 图片 |
+| 🎨 **语法高亮** | 基于 `react-syntax-highlighter` 的代码块多语言高亮 |
+| 📸 **图片支持** | 支持拖拽上传和 `Ctrl+V` 粘贴图片，自动生成 Markdown 语法 |
+| 💾 **自动保存** | 每隔 2 秒自动将内容保存至 `localStorage`，防止内容丢失 |
+| 🌙 **三档主题** | 浅色 / 深色 / 跟随系统（Auto），持久化到 `localStorage` |
+| 🔤 **字体切换** | 支持多种正文字体（衬线体 / 无衬线体 / 等宽体）切换 |
+| 🌍 **国际化** | 中英文界面切换，所有 UI 文案完整翻译 |
+| ⌨️ **格式工具栏** | 一键插入加粗、斜体、标题、代码块、表格、链接等格式 |
+| ↩️ **撤销/重做** | 完整的编辑历史，支持多步撤销与重做 |
+| 📊 **状态栏** | 实时显示词数、字符数、行数和当前视图模式 |
+| ♿ **可访问性** | 遵循无障碍设计原则，所有交互元素包含语义标签 |
+
+---
 
 ## 🛠️ 技术栈
 
-- **React 18** - 使用函数式组件和 Hooks
-- **TypeScript** - 严格类型检查
-- **Vite** - 快速的构建工具
-- **Tailwind CSS** - 实用优先的 CSS 框架
-- **react-markdown** - Markdown 渲染
-- **remark-gfm** - GitHub Flavored Markdown 支持
-- **react-syntax-highlighter** - 代码语法高亮
-- **lucide-react** - 图标库
+| 分类 | 技术 |
+|------|------|
+| **框架** | React 19（函数式组件 + Hooks） |
+| **语言** | TypeScript 5（严格类型检查） |
+| **构建工具** | Vite 7 |
+| **样式** | Tailwind CSS 4 |
+| **Markdown 解析** | `react-markdown` + `remark-gfm` (GFM 支持) |
+| **语法高亮** | `react-syntax-highlighter` (Prism) |
+| **图标** | `lucide-react` |
+| **图片导出** | `html2canvas` |
+| **性能优化** | `useDeferredValue` + `useTransition` |
+
+---
 
 ## 🚀 快速开始
 
@@ -47,73 +101,128 @@ npm run build
 
 构建产物会生成在 `dist` 目录。
 
+### 代码检查
+
+```bash
+npm run lint
+```
+
+---
+
 ## ⌨️ 快捷键
 
-- `Ctrl/Cmd + S` - 保存文件
-- `Ctrl/Cmd + O` - 打开文件
-- `Ctrl/Cmd + P` - 导出 PDF
+| 快捷键 | 功能 |
+|--------|------|
+| `Ctrl/Cmd + S` | 保存文件 |
+| `Ctrl/Cmd + O` | 打开文件 |
+| `Ctrl/Cmd + P` | 导出 PDF |
+| `Ctrl/Cmd + Z` | 撤销 |
+| `Ctrl/Cmd + Shift + Z` | 重做 |
+| `Ctrl/Cmd + B` | 加粗 |
+| `Ctrl/Cmd + I` | 斜体 |
 
-## 📚 功能说明
+---
+
+## 📚 功能详解
 
 ### Markdown 支持
 
 支持完整的 GitHub Flavored Markdown (GFM) 语法，包括：
 
-- 标题、段落、强调
-- 列表（有序、无序、任务列表）
-- 代码块和行内代码
-- 表格
-- 引用块
-- 链接和图片
-- 水平线
+- **基础排版** - 标题（H1-H6）、段落、加粗、斜体、删除线
+- **列表** - 有序列表、无序列表、任务列表（`- [ ]` / `- [x]`）
+- **代码** - 行内代码和多语言代码块（语法高亮）
+- **表格** - 支持对齐方式（左/中/右）
+- **引用块** - 嵌套引用
+- **链接与图片** - 行内链接、引用链接、图片
+- **扩展语法** - 水平线、脚注、HTML 内嵌
+
+### 视图模式
+
+- **分屏视图** — 编辑区与预览区左右并排，同步滚动
+- **仅编辑** — 全屏编辑区，专注写作
+- **仅预览** — 全屏预览区，沉浸式阅读
+
+### 目录（TOC）
+
+- 自动解析文档中所有标题层级（H1-H6）生成目录树
+- 点击目录项可跳转到对应的预览位置或编辑行
+- 当前可视区域的标题在目录中高亮显示
 
 ### 图片处理
 
-1. **拖拽上传**：直接将图片拖入编辑区
-2. **粘贴上传**：复制图片后在编辑区粘贴
-3. 自动生成 Markdown 图片语法并创建本地预览
+1. **拖拽上传** — 将图片文件拖入编辑区，自动插入 `![image](url)` 语法
+2. **粘贴上传** — 在编辑区按 `Ctrl/Cmd + V` 粘贴剪贴板中的图片
+3. 使用 `URL.createObjectURL` 生成本地对象 URL，无需上传服务器
 
 ### PDF 导出
 
-- 使用浏览器原生打印功能
-- 优化的打印样式（A4 纸张，合适的边距）
-- 防止元素在页面中断开
-- 自动隐藏工具栏和编辑区
+- 使用浏览器原生 `window.print()` + CSS Paged Media 规范
+- `@page { size: A4; margin: 20mm; }` 标准 A4 纸张布局
+- `break-inside: avoid` 防止代码块、引用、图片在页面间截断
+- 自动隐藏工具栏、编辑区等非内容元素（`@media print`）
+
+### 图片导出（PNG）
+
+- 使用 `html2canvas` 将完整预览区截为 2× 高清 PNG
+- 支持深色/浅色背景，自动匹配当前主题背景色
+- 导出文件名格式：`{文件名}.png`
 
 ### 文件操作
 
-- **打开**：支持 File System Access API，降级到传统文件选择
-- **保存**：保存到已打开的文件
-- **另存为**：保存到新文件
-- **自动保存**：每 2 秒自动保存到 localStorage
+| 操作 | 描述 |
+|------|------|
+| **打开** | 优先使用 File System Access API；浏览器不支持时降级为 `<input type="file">` |
+| **保存** | 保存到当前已打开的文件句柄 |
+| **另存为** | 弹出文件保存对话框，默认文件名含日期（如 `Untitled_20260228.md`） |
+| **自动保存** | 每 2 秒将内容保存至 `localStorage`，刷新后自动恢复 |
+
+### 主题与字体
+
+- 主题模式：**浅色** / **深色** / **Auto**（跟随系统 `prefers-color-scheme`）
+- 字体选项：衬线字体（Source Serif 4）、无衬线字体、等宽字体
+- 所有偏好设置持久化存储至 `localStorage`
+
+---
 
 ## 📁 项目结构
 
 ```
 src/
 ├── components/
-│   ├── Editor.tsx              # 主编辑器容器
-│   ├── MarkdownEditor.tsx      # 左侧编辑区
-│   ├── MarkdownPreview.tsx     # 右侧预览区
-│   └── Toolbar.tsx             # 工具栏
+│   ├── Editor.tsx              # 主编辑器容器（状态管理、布局）
+│   ├── FormatToolbar.tsx       # Markdown 格式工具栏
+│   ├── MarkdownEditor.tsx      # 左侧编辑区（textarea + 行号）
+│   ├── MarkdownPreview.tsx     # 右侧预览区（react-markdown 渲染）
+│   ├── TableOfContents.tsx     # 目录面板
+│   └── Toolbar.tsx             # 顶部工具栏（文件、视图、主题、语言）
 ├── hooks/
-│   ├── useFileSystem.ts        # 文件操作
-│   └── useAutoSave.ts          # 自动保存
-├── index.css                   # 全局样式
-├── print.css                   # 打印样式
+│   ├── useAutoSave.ts          # localStorage 自动保存
+│   ├── useFileSystem.ts        # 文件打开/保存（File System Access API）
+│   ├── useFontFamily.ts        # 字体偏好管理
+│   ├── useHistory.ts           # 编辑历史（撤销/重做）
+│   ├── useLocale.ts            # 国际化语言切换
+│   ├── useTheme.ts             # 主题（浅色/深色/Auto）
+│   └── useToc.ts               # 目录项解析
+├── i18n.ts                     # 中英文翻译字典
+├── index.css                   # 全局样式 & CSS 变量（主题 tokens）
+├── print.css                   # 打印 / PDF 导出专用样式
 ├── App.tsx                     # 根组件
-└── main.tsx                    # 入口文件
+└── main.tsx                    # 应用入口
 ```
+
+---
 
 ## 🎯 设计原则
 
-1. **极简设计** - 简洁的界面，专注于内容创作
-2. **高性能** - 使用 `useDeferredValue` 优化大文件渲染
-3. **用户体验** - 实时预览、同步滚动、键盘快捷键
-4. **可访问性** - 遵循无障碍设计原则
-5. **专业导出** - 符合打印规范的 PDF 导出
+1. **极简设计** — 简洁的界面，专注于内容创作，无多余干扰
+2. **高性能** — `useDeferredValue` + `useTransition` 优化大文件渲染，防止输入卡顿
+3. **渐进增强** — File System Access API 优先，优雅降级至传统 `<input>` 方案
+4. **逻辑分离** — 所有业务逻辑封装为独立 Hook，视图组件保持纯粹
+5. **专业导出** — 遵循 CSS Paged Media 规范，保证 PDF 打印质量
+
+---
 
 ## 📝 License
 
 MIT
-\nLive demo: https://sjjliqpl.github.io/markdown-editor/
