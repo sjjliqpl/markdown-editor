@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useDeferredValue, useEffect, useMemo, useRef, useTransition } from 'react';
 import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import { Toolbar } from './Toolbar';
 import { MarkdownEditor } from './MarkdownEditor';
 import type { MarkdownEditorHandle } from './MarkdownEditor';
@@ -160,6 +161,76 @@ export const Editor: React.FC = () => {
     }
   }, [fileName, locale]);
 
+  const handleExportPdfFile = useCallback(async () => {
+    const tr = t(locale);
+    const previewEl = document.getElementById('markdown-preview') as HTMLDivElement | null;
+    if (!previewEl) {
+      alert(tr.exportPdfNoPreview);
+      return;
+    }
+    const originalHeight = previewEl.style.height;
+    const originalOverflow = previewEl.style.overflowY;
+    const originalMaxHeight = previewEl.style.maxHeight;
+    previewEl.style.height = previewEl.scrollHeight + 'px';
+    previewEl.style.overflowY = 'visible';
+    previewEl.style.maxHeight = 'none';
+    try {
+      const bgColor = getComputedStyle(document.documentElement)
+        .getPropertyValue('--bg-surface').trim() || '#ffffff';
+      const canvas = await html2canvas(previewEl, {
+        useCORS: true,
+        allowTaint: true,
+        scale: 2,
+        backgroundColor: bgColor,
+        height: previewEl.scrollHeight,
+        windowHeight: previewEl.scrollHeight,
+        scrollY: -window.scrollY,
+      });
+      // A4 dimensions in mm
+      const A4_WIDTH_MM = 210;
+      const A4_HEIGHT_MM = 297;
+      const MARGIN_MM = 20;
+      const contentWidth = A4_WIDTH_MM - MARGIN_MM * 2;
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = imgHeight / imgWidth;
+      const pdfImgWidth = contentWidth;
+      const pdfImgHeight = pdfImgWidth * ratio;
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      const pageContentHeight = A4_HEIGHT_MM - MARGIN_MM * 2;
+      let yOffset = 0;
+      let pageIndex = 0;
+      while (yOffset < pdfImgHeight) {
+        if (pageIndex > 0) pdf.addPage();
+        // Crop canvas slice for this page
+        const sliceHeightPx = Math.round((pageContentHeight / pdfImgHeight) * imgHeight);
+        const yOffsetPx = Math.round((yOffset / pdfImgHeight) * imgHeight);
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = imgWidth;
+        sliceCanvas.height = Math.min(sliceHeightPx, imgHeight - yOffsetPx);
+        const ctx = sliceCanvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(canvas, 0, yOffsetPx, imgWidth, sliceCanvas.height, 0, 0, imgWidth, sliceCanvas.height);
+        }
+        const sliceDataUrl = sliceCanvas.toDataURL('image/png');
+        const sliceHeightMm = (sliceCanvas.height / imgHeight) * pdfImgHeight;
+        pdf.addImage(sliceDataUrl, 'PNG', MARGIN_MM, MARGIN_MM, pdfImgWidth, sliceHeightMm);
+        yOffset += pageContentHeight;
+        pageIndex++;
+      }
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const baseName = fileName.replace(/\.[^.]+$/, '') || `Untitled_${dateStr}`;
+      pdf.save(`${baseName}.pdf`);
+    } catch (err) {
+      console.error('Export PDF failed:', err);
+      alert(tr.exportPdfFailed);
+    } finally {
+      previewEl.style.height = originalHeight;
+      previewEl.style.overflowY = originalOverflow;
+      previewEl.style.maxHeight = originalMaxHeight;
+    }
+  }, [fileName, locale]);
+
   const handleImagePaste = useCallback(
     (e: React.ClipboardEvent) => {
       const items = e.clipboardData?.items;
@@ -280,6 +351,7 @@ export const Editor: React.FC = () => {
         onSave={saveFile}
         onSaveAs={saveFileAs}
         onExportPDF={handleExportPDF}
+        onExportPdfFile={handleExportPdfFile}
         onExportImage={handleExportImage}
         fileName={fileName}
         viewMode={viewMode}
