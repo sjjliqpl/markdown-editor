@@ -7,7 +7,6 @@ export interface Translation {
   saveAs: string;
   exportImage: string;
   exportPdf: string;
-  print: string;
   editorOnly: string;
   splitView: string;
   previewOnly: string;
@@ -49,7 +48,6 @@ const en: Translation = {
   saveAs: 'Save As...',
   exportImage: 'Export Image',
   exportPdf: 'Export PDF',
-  print: 'Print',
   editorOnly: 'Editor Only',
   splitView: 'Split View',
   previewOnly: 'Preview Only',
@@ -91,7 +89,6 @@ const zh: Translation = {
   saveAs: '另存为…',
   exportImage: '导出图片',
   exportPdf: '导出 PDF',
-  print: '打印',
   editorOnly: '仅编辑',
   splitView: '分屏视图',
   previewOnly: '仅预览',

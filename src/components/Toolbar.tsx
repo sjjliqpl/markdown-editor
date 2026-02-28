@@ -3,7 +3,6 @@ import {
   FolderOpen,
   Save,
   Download,
-  Printer,
   FileText,
   PanelLeft,
   PanelRight,
@@ -30,7 +29,6 @@ interface ToolbarProps {
   onOpen: () => void;
   onSave: () => void;
   onSaveAs: () => void;
-  onExportPDF: () => void;
   onExportPdfFile: () => void;
   onExportImage: () => void;
   fileName: string;
@@ -52,7 +50,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onOpen,
   onSave,
   onSaveAs,
-  onExportPDF,
   onExportPdfFile,
   onExportImage,
   fileName,
@@ -288,7 +285,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <div style={{ width: '1px', height: '20px', background: 'var(--border)' }} />
 
         <button
-          onClick={onExportPDF}
+          onClick={onExportPdfFile}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -312,10 +309,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
             e.currentTarget.style.transform = 'translateY(0)';
           }}
-          title={`${tr.print} (⌘P)`}
+          title={`${tr.exportPdf} (⌘P)`}
         >
-          <Printer size={13} />
-          {tr.print}
+          <FileDown size={13} />
+          {tr.exportPdf}
         </button>
       </div>
     </div>

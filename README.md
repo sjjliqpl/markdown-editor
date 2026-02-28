@@ -46,7 +46,7 @@
 | 🖥️ **三种视图模式** | 分屏视图 / 仅编辑 / 仅预览，可随时切换 |
 | 📑 **目录导航** | 自动从文档标题生成目录，点击跳转，高亮当前位置 |
 | 📁 **文件操作** | 打开、保存、另存为 `.md` 文件，支持 File System Access API |
-| 🖨️ **PDF 导出** | 使用浏览器原生打印，优化 A4 打印样式，自动隐藏 UI |
+| 🖨️ **PDF 导出** | 使用 `jsPDF` + `html2canvas` 直接导出为 PDF 文件，无需打印对话框，优化 A4 分页布局 |
 | 🖼️ **图片导出** | 使用 `html2canvas` 将预览区内容导出为高清 PNG 图片 |
 | 🎨 **语法高亮** | 基于 `react-syntax-highlighter` 的代码块多语言高亮 |
 | 📸 **图片支持** | 支持拖拽上传和 `Ctrl+V` 粘贴图片，自动生成 Markdown 语法 |
@@ -72,6 +72,7 @@
 | **Markdown 解析** | `react-markdown` + `remark-gfm` (GFM 支持) |
 | **语法高亮** | `react-syntax-highlighter` (Prism) |
 | **图标** | `lucide-react` |
+| **PDF 导出** | `jsPDF` + `html2canvas` |
 | **图片导出** | `html2canvas` |
 | **性能优化** | `useDeferredValue` + `useTransition` |
 
@@ -115,7 +116,7 @@ npm run lint
 |--------|------|
 | `Ctrl/Cmd + S` | 保存文件 |
 | `Ctrl/Cmd + O` | 打开文件 |
-| `Ctrl/Cmd + P` | 导出 PDF |
+| `Ctrl/Cmd + P` | 导出 PDF 文件 |
 | `Ctrl/Cmd + Z` | 撤销 |
 | `Ctrl/Cmd + Shift + Z` | 重做 |
 | `Ctrl/Cmd + B` | 加粗 |
@@ -157,10 +158,10 @@ npm run lint
 
 ### PDF 导出
 
-- 使用浏览器原生 `window.print()` + CSS Paged Media 规范
-- `@page { size: A4; margin: 20mm; }` 标准 A4 纸张布局
-- `break-inside: avoid` 防止代码块、引用、图片在页面间截断
-- 自动隐藏工具栏、编辑区等非内容元素（`@media print`）
+- 使用 `jsPDF` + `html2canvas` 直接将预览内容渲染为 PDF 文件，无需弹出浏览器打印对话框
+- 自动按 A4 尺寸分页，每页留 20mm 边距
+- 支持多页长文档自动分割，保证内容连续
+- 导出文件名格式：`{文件名}.pdf`
 
 ### 图片导出（PNG）
 
