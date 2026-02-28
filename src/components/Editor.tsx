@@ -112,10 +112,6 @@ export const Editor: React.FC = () => {
     setContent(newContent);
   }, []);
 
-  const handleExportPDF = useCallback(() => {
-    window.print();
-  }, []);
-
   const handleExportImage = useCallback(async () => {
     const tr = t(locale);
     // Use the inner scrollable preview element to capture full content height
@@ -270,13 +266,13 @@ export const Editor: React.FC = () => {
         openFile();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
         e.preventDefault();
-        handleExportPDF();
+        handleExportPdfFile();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [saveFile, openFile, handleExportPDF]);
+  }, [saveFile, openFile, handleExportPdfFile]);
 
   const showEditor = viewMode === 'split' || viewMode === 'editor';
   const showPreview = viewMode === 'split' || viewMode === 'preview';
@@ -350,7 +346,6 @@ export const Editor: React.FC = () => {
         onOpen={openFile}
         onSave={saveFile}
         onSaveAs={saveFileAs}
-        onExportPDF={handleExportPDF}
         onExportPdfFile={handleExportPdfFile}
         onExportImage={handleExportImage}
         fileName={fileName}
