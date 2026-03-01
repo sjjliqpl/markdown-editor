@@ -8,22 +8,6 @@
 
 ## 📸 应用截图
 
-### 分屏视图（默认深色主题）
-
-![分屏视图 - 深色主题](docs/screenshots/01-split-view.png)
-
-### 仅预览模式
-
-![仅预览模式](docs/screenshots/02-preview-only.png)
-
-### 仅编辑模式
-
-![仅编辑模式](docs/screenshots/03-editor-only.png)
-
-### 浅色主题
-
-![浅色主题](docs/screenshots/04-light-theme.png)
-
 ### 目录面板（浅色）
 
 ![目录面板 - 浅色主题](docs/screenshots/05-toc-light.png)
@@ -31,10 +15,6 @@
 ### 目录面板（深色）
 
 ![目录面板 - 深色主题](docs/screenshots/06-toc-dark.png)
-
-### 中文界面
-
-![中文界面](docs/screenshots/07-chinese-mode.png)
 
 ---
 
