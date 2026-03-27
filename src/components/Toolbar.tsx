@@ -8,16 +8,12 @@ import {
   PanelRight,
   Columns2,
   ChevronDown,
-  Sun,
-  Moon,
-  SunMoon,
   Image,
   Languages,
   Type,
   List,
   FileDown,
 } from 'lucide-react';
-import type { ThemeMode } from '../hooks/useTheme';
 import type { Locale } from '../i18n';
 import { t } from '../i18n';
 import type { FontFamily } from '../hooks/useFontFamily';
@@ -34,10 +30,6 @@ interface ToolbarProps {
   fileName: string;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
-  wordCount: number;
-  charCount: number;
-  themeMode: ThemeMode;
-  onThemeCycle: () => void;
   locale: Locale;
   onToggleLocale: () => void;
   fontFamily: FontFamily;
@@ -55,10 +47,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   fileName,
   viewMode,
   onViewModeChange,
-  wordCount,
-  charCount,
-  themeMode,
-  onThemeCycle,
   locale,
   onToggleLocale,
   fontFamily,
@@ -87,30 +75,33 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     } as React.CSSProperties}>
       {/* Left: Logo + File name */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{
-            width: '28px',
-            height: '28px',
-            borderRadius: 'var(--radius-md)',
-            background: 'linear-gradient(135deg, var(--accent), #c4841e)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: 'var(--shadow-glow)',
-          }}>
-            <FileText size={14} color="#fff" strokeWidth={2.5} />
-          </div>
-          <span style={{
-            fontSize: '14px',
-            fontWeight: 600,
-            color: 'var(--text-primary)',
-            letterSpacing: '-0.01em',
-          }}>
-            {tr.appName}
-          </span>
-        </div>
-
-        <div style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 4px' }} />
+        {!window.electronAPI && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: 'var(--radius-md)',
+                background: 'linear-gradient(135deg, var(--accent), #c4841e)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: 'var(--shadow-glow)',
+              }}>
+                <FileText size={14} color="#fff" strokeWidth={2.5} />
+              </div>
+              <span style={{
+                fontSize: '14px',
+                fontWeight: 600,
+                color: 'var(--text-primary)',
+                letterSpacing: '-0.01em',
+              }}>
+                {tr.appName}
+              </span>
+            </div>
+            <div style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 4px' }} />
+          </>
+        )}
 
         {/* File menu */}
         <div style={{ position: 'relative' }}>
@@ -226,29 +217,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         </div>
       </div>
 
-      {/* Right: Stats + Actions */}
+      {/* Right: Actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          fontSize: '12px',
-          color: 'var(--text-muted)',
-          fontFamily: 'var(--font-mono)',
-          fontWeight: 500,
-        }}>
-          <span>{wordCount.toLocaleString()} {tr.words}</span>
-          <span style={{ opacity: 0.4 }}>·</span>
-          <span>{charCount.toLocaleString()} {tr.chars}</span>
-        </div>
-
-        <div style={{ width: '1px', height: '20px', background: 'var(--border)' }} />
-
-        {/* Theme toggle */}
-        <ThemeToggle mode={themeMode} onCycle={onThemeCycle} locale={locale} />
-
-        <div style={{ width: '1px', height: '20px', background: 'var(--border)' }} />
-
         {/* Language toggle */}
         <button
           onClick={onToggleLocale}
@@ -285,39 +255,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
         {/* Font selector */}
         <FontSelector fontFamily={fontFamily} onFontChange={onFontChange} locale={locale} />
-
-        <div style={{ width: '1px', height: '20px', background: 'var(--border)' }} />
-
-        <button
-          onClick={onExportPdfFile}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '6px 14px',
-            fontSize: '13px',
-            fontWeight: 600,
-            color: '#fff',
-            background: 'linear-gradient(135deg, var(--accent), #c4841e)',
-            border: 'none',
-            borderRadius: 'var(--radius-sm)',
-            cursor: 'pointer',
-            fontFamily: 'var(--font-ui)',
-            boxShadow: 'var(--shadow-sm)',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.boxShadow = 'var(--shadow-glow)';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
-          title={`${tr.exportPdf} (⌘P)`}
-        >
-          <FileDown size={13} />
-          {tr.exportPdf}
-        </button>
       </div>
     </div>
   );
@@ -397,51 +334,6 @@ const ViewToggle: React.FC<{
     {icon}
   </button>
 );
-
-const THEME_META: Record<ThemeMode, { icon: React.ReactNode; labelKey: 'themeAuto' | 'themeDark' | 'themeLight'; nextKey: 'themeAuto' | 'themeDark' | 'themeLight' }> = {
-  auto: { icon: <SunMoon size={15} />, labelKey: 'themeAuto', nextKey: 'themeDark' },
-  dark: { icon: <Moon size={15} />, labelKey: 'themeDark', nextKey: 'themeLight' },
-  light: { icon: <Sun size={15} />, labelKey: 'themeLight', nextKey: 'themeAuto' },
-};
-
-const ThemeToggle: React.FC<{ mode: ThemeMode; onCycle: () => void; locale: Locale }> = ({ mode, onCycle, locale }) => {
-  const meta = THEME_META[mode];
-  const tr = t(locale);
-  const label = tr[meta.labelKey];
-  const next = tr[meta.nextKey];
-  return (
-    <button
-      onClick={onCycle}
-      title={tr.themeNext(next)}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '5px',
-        padding: '4px 10px',
-        fontSize: '12px',
-        fontWeight: 500,
-        color: 'var(--text-secondary)',
-        background: 'var(--bg-hover)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-sm)',
-        cursor: 'pointer',
-        fontFamily: 'var(--font-ui)',
-        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.color = 'var(--text-primary)';
-        e.currentTarget.style.borderColor = 'var(--accent)';
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.color = 'var(--text-secondary)';
-        e.currentTarget.style.borderColor = 'var(--border)';
-      }}
-    >
-      {meta.icon}
-      {label}
-    </button>
-  );
-};
 
 const FontSelector: React.FC<{
   fontFamily: FontFamily;

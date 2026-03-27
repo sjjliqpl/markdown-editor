@@ -1,45 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect } from 'react';
 
-export type ThemeMode = 'dark' | 'light' | 'auto';
+export type ThemeMode = 'auto';
 
-const STORAGE_KEY = 'markdown-editor-theme';
-
-function applyTheme(mode: ThemeMode): void {
+function applyTheme(): void {
   const root = document.documentElement;
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-  const isDark = mode === 'dark' || (mode === 'auto' && prefersDark);
-  root.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
 }
 
 export function useTheme() {
-  const [themeMode, setThemeMode] = useState<ThemeMode>(
-    () => (localStorage.getItem(STORAGE_KEY) as ThemeMode) || 'auto'
-  );
-
-  // Apply theme whenever mode changes
+  // Always follow system preference
   useEffect(() => {
-    applyTheme(themeMode);
-    localStorage.setItem(STORAGE_KEY, themeMode);
-  }, [themeMode]);
-
-  // Listen to OS preference changes when in auto mode
-  useEffect(() => {
+    applyTheme();
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const handler = () => {
-      if (themeMode === 'auto') applyTheme('auto');
-    };
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, [themeMode]);
-
-  const cycleTheme = useCallback(() => {
-    setThemeMode(prev => {
-      if (prev === 'auto') return 'dark';
-      if (prev === 'dark') return 'light';
-      return 'auto';
-    });
+    mq.addEventListener('change', applyTheme);
+    return () => mq.removeEventListener('change', applyTheme);
   }, []);
-
-  return { themeMode, setThemeMode, cycleTheme };
 }

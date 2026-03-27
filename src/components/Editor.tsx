@@ -81,15 +81,9 @@ export const Editor: React.FC = () => {
   );
 
   useAutoSave(content);
-  const { themeMode, cycleTheme: cycleThemeRaw } = useTheme();
+  useTheme();
   const { locale, toggleLocale } = useLocale();
   const { fontFamily, setFontFamily: setFontFamilyRaw } = useFontFamily();
-
-  const cycleTheme = useCallback(() => {
-    startTransition(() => {
-      cycleThemeRaw();
-    });
-  }, [cycleThemeRaw]);
 
   const setFontFamily = useCallback((font: Parameters<typeof setFontFamilyRaw>[0]) => {
     startTransition(() => {
@@ -360,10 +354,6 @@ export const Editor: React.FC = () => {
         fileName={fileName}
         viewMode={viewMode}
         onViewModeChange={handleViewModeChange}
-        wordCount={wordCount}
-        charCount={charCount}
-        themeMode={themeMode}
-        onThemeCycle={cycleTheme}
         locale={locale}
         onToggleLocale={toggleLocale}
         fontFamily={fontFamily}
@@ -470,6 +460,10 @@ export const Editor: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <span>UTF-8</span>
                 <span>{content.split('\n').length} {tr.lines}</span>
+                <span style={{ opacity: 0.4 }}>·</span>
+                <span>{wordCount.toLocaleString()} {tr.words}</span>
+                <span style={{ opacity: 0.4 }}>·</span>
+                <span>{charCount.toLocaleString()} {tr.chars}</span>
                 <span>
                   {viewMode === 'split' ? tr.modeSplit : viewMode === 'editor' ? tr.modeEditor : tr.modePreview}
                 </span>
