@@ -4,12 +4,14 @@ import { useState, useCallback, useEffect } from 'react';
 declare global {
   interface Window {
     electronAPI?: {
+      platform: string;
       openFile: () => Promise<{ filePath: string; fileName: string; content: string } | null>;
       writeFile: (filePath: string, content: string) => Promise<{ success: boolean; error?: string }>;
       saveFileAs: (defaultName: string, content: string) => Promise<{ filePath: string; fileName: string } | null>;
       onMenuOpen: (cb: () => void) => void;
       onMenuSave: (cb: () => void) => void;
       onMenuSaveAs: (cb: () => void) => void;
+      onFileOpened: (cb: (data: { filePath: string; fileName: string; content: string }) => void) => void;
       removeMenuListeners: () => void;
     };
   }
@@ -147,6 +149,13 @@ export const useFileSystem = (
     window.electronAPI!.onMenuOpen(openFile);
     window.electronAPI!.onMenuSave(saveFile);
     window.electronAPI!.onMenuSaveAs(saveFileAs);
+    // Handle files opened externally (double-click .md, drag to dock, etc.)
+    window.electronAPI!.onFileOpened((data) => {
+      setContent(data.content);
+      setFileName(data.fileName);
+      setNativeFilePath(data.filePath);
+      setFileHandle(null);
+    });
     return () => window.electronAPI!.removeMenuListeners();
   }, [isElectron, openFile, saveFile, saveFileAs]);
 

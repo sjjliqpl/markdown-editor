@@ -78,12 +78,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: '0 16px',
+      // macOS traffic light buttons need ~80px left padding with hiddenInset titlebar
+      paddingLeft: (typeof window !== 'undefined' && window.electronAPI?.platform === 'darwin') ? '80px' : '16px',
       fontFamily: 'var(--font-ui)',
       position: 'relative',
       zIndex: 50,
-    }}>
+      WebkitAppRegion: 'drag',
+    } as React.CSSProperties}>
       {/* Left: Logo + File name */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{
             width: '28px',
@@ -171,7 +174,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         display: 'flex',
         alignItems: 'center',
         gap: '6px',
-      }}>
+        WebkitAppRegion: 'no-drag',
+      } as React.CSSProperties}>
         {/* TOC toggle */}
         {onTocToggle && (
           <button
@@ -223,7 +227,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       </div>
 
       {/* Right: Stats + Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
         <div style={{
           display: 'flex',
           alignItems: 'center',

@@ -23,9 +23,46 @@
       "dist/**/*",
       "electron/**/*"
     ],
+    "fileAssociations": [
+      {
+        "ext": ["md", "markdown"],
+        "name": "Markdown Document",
+        "description": "Markdown Document",
+        "mimeType": "text/markdown",
+        "role": "Editor"
+      },
+      {
+        "ext": ["txt"],
+        "name": "Text Document",
+        "description": "Plain Text Document",
+        "mimeType": "text/plain",
+        "role": "Editor"
+      }
+    ],
     "mac": {
       "category": "public.app-category.productivity",
-      "target": "dmg"
+      "target": "dmg",
+      "extendInfo": {
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "Markdown Document",
+            "CFBundleTypeRole": "Editor",
+            "LSHandlerRank": "Default",
+            "LSItemContentTypes": ["net.daringfireball.markdown", "public.plain-text"],
+            "CFBundleTypeExtensions": ["md", "markdown", "txt"]
+          }
+        ],
+        "UTImportedTypeDeclarations": [
+          {
+            "UTTypeIdentifier": "net.daringfireball.markdown",
+            "UTTypeDescription": "Markdown Document",
+            "UTTypeConformsTo": ["public.plain-text"],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": ["md", "markdown"]
+            }
+          }
+        ]
+      }
     },
     "win": {
       "target": "nsis"
