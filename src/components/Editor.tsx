@@ -58,7 +58,7 @@ export const Editor: React.FC = () => {
   const [content, setContent] = useState<string>(
     () => localStorage.getItem('markdown-autosave') || INITIAL_CONTENT
   );
-  const [viewMode, setViewMode] = useState<ViewMode>('split');
+  const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const deferredContent = useDeferredValue(content);
 
   const [isPending, startTransition] = useTransition();
@@ -94,7 +94,10 @@ export const Editor: React.FC = () => {
     });
   }, [setFontFamilyRaw]);
   const [showToc, setShowToc] = useState<boolean>(
-    () => localStorage.getItem('markdown-toc-open') === 'true'
+    () => {
+      const stored = localStorage.getItem('markdown-toc-open');
+      return stored === null ? true : stored === 'true';
+    }
   );
   const tocItems = useToc(deferredContent);
 

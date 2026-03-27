@@ -330,8 +330,8 @@ pub fn run() {
                                     if let Ok(mut map) = state.0.lock() {
                                         map.insert("main".to_string(), file_result.clone());
                                     }
-                                    // Also emit in case webview is already loaded
                                     if let Some(window) = app_handle.get_webview_window("main") {
+                                        let _ = window.set_title(&file_name);
                                         let _ = window.emit("file:opened", &file_result);
                                     }
                                 } else {
