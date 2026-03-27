@@ -57,7 +57,7 @@
 | **语法高亮** | `react-syntax-highlighter` (Prism) |
 | **图标** | `lucide-react` |
 | **PDF/图片导出（Web）** | `jsPDF` + `html2canvas` |
-| **桌面应用** | **Tauri 2** + Rust 后端（macOS arm64，4.3 MB DMG） |
+| **桌面应用** | **Tauri 2**（推荐，~4.3 MB DMG）+ **Electron**（备用，~112 MB DMG） |
 | **性能优化** | `useDeferredValue` + `useTransition` |
 
 ---
@@ -112,6 +112,22 @@ src-tauri/target/aarch64-apple-darwin/release/bundle/
     └── Markdown Editor_1.0.0_aarch64.dmg  # macOS 安装镜像（~4.3 MB）
 ```
 
+### 桌面应用开发模式（Electron）
+
+```bash
+npm run electron:dev
+```
+
+同时启动 Vite 开发服务器和 Electron 窗口，支持热更新。
+
+### 打包桌面安装包（Electron）
+
+```bash
+npm run dist
+```
+
+打包产物输出到 `release/` 目录（macOS DMG，~112 MB）。
+
 ### 代码检查
 
 ```bash
@@ -151,6 +167,27 @@ npm run lint
 |------|---------|----------------|
 | 导出 PDF | jsPDF 直接生成 `.pdf` 文件 | 调用系统打印对话框，选"存储为 PDF" |
 | 导出图片 | html2canvas 生成 `.png` 文件 | 调用系统打印对话框，可打印或存储 |
+
+---
+
+## 🖥️ 桌面应用（Electron）
+
+项目同时保留 **Electron** 后端，适合需要跨平台兼容性或不想安装 Rust 工具链的场景。
+
+| | Electron | Tauri（推荐） |
+|---|---|---|
+| DMG 大小 | ~112 MB | **~4.3 MB** |
+| 依赖 | Node.js | Rust（仅开发时） |
+| 技术原理 | 内置 Chromium + Node.js | 系统 WebView + Rust 后端 |
+| 构建速度 | 快 | 首次较慢，增量编译快 |
+
+Electron 后端代码位于 `electron/` 目录：
+
+```
+electron/
+├── main.cjs      # 主进程（窗口、菜单、IPC）
+└── preload.cjs   # 预加载脚本（contextBridge 暴露 API）
+```
 
 ---
 
@@ -258,7 +295,9 @@ src/
 ├── print.css               # 打印 / PDF 导出专用样式
 ├── App.tsx                 # 根组件
 └── main.tsx                # 应用入口
-electron/                   # Electron 遗留后端（保留兼容）
+electron/                   # Electron 后端（备用打包方案）
+├── main.cjs                # 主进程（窗口、菜单、IPC 命令）
+└── preload.cjs             # 预加载脚本（contextBridge）
 ```
 
 ---
