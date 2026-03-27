@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 
 // Type definition for Electron IPC bridge injected by preload.cjs
 declare global {
@@ -19,14 +19,26 @@ declare global {
 
 export const useFileSystem = (
   content: string,
-  setContent: (content: string) => void
+  setContent: (content: string) => void,
+  onExternalOpen?: () => void,
 ) => {
   const [fileName, setFileName] = useState<string>('Untitled.md');
   const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(null);
   // Track native file path when running inside Electron
   const [nativeFilePath, setNativeFilePath] = useState<string | null>(null);
 
+  // Use ref to avoid stale closure in the IPC listener
+  const onExternalOpenRef = useRef(onExternalOpen);
+  onExternalOpenRef.current = onExternalOpen;
+
   const isElectron = typeof window !== 'undefined' && !!window.electronAPI;
+
+  // Directory of the currently open file (for resolving relative image paths)
+  const fileDir = useMemo(() => {
+    if (!nativeFilePath) return null;
+    const lastSep = Math.max(nativeFilePath.lastIndexOf('/'), nativeFilePath.lastIndexOf('\\'));
+    return lastSep > 0 ? nativeFilePath.substring(0, lastSep) : null;
+  }, [nativeFilePath]);
 
   const openFile = useCallback(async () => {
     try {
@@ -155,12 +167,14 @@ export const useFileSystem = (
       setFileName(data.fileName);
       setNativeFilePath(data.filePath);
       setFileHandle(null);
+      onExternalOpenRef.current?.();
     });
     return () => window.electronAPI!.removeMenuListeners();
   }, [isElectron, openFile, saveFile, saveFileAs]);
 
   return {
     fileName,
+    fileDir,
     openFile,
     saveFile,
     saveFileAs,

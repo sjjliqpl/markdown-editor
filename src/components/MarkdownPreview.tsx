@@ -26,11 +26,13 @@ export interface MarkdownPreviewHandle {
 interface MarkdownPreviewProps {
   content: string;
   fontFamily?: FontFamily;
+  fileDir?: string | null;
 }
 
 const MarkdownPreviewInner: React.ForwardRefRenderFunction<MarkdownPreviewHandle, MarkdownPreviewProps> = ({
   content,
   fontFamily = 'serif',
+  fileDir = null,
 }, ref) => {
   const previewRef = React.useRef<HTMLDivElement>(null);
   const [isDark, setIsDark] = React.useState(true);
@@ -263,9 +265,17 @@ const MarkdownPreviewInner: React.ForwardRefRenderFunction<MarkdownPreviewHandle
               );
             },
             img({ src, alt }) {
+              let resolvedSrc = src;
+              if (src && fileDir && !/^(https?:|data:|blob:)/i.test(src)) {
+                // Resolve relative paths against the file's directory
+                const absolutePath = src.startsWith('/')
+                  ? src
+                  : `${fileDir}/${src}`;
+                resolvedSrc = `local-resource://${encodeURI(absolutePath)}`;
+              }
               return (
                 <img
-                  src={src}
+                  src={resolvedSrc}
                   alt={alt}
                   className="max-w-full rounded-lg"
                   loading="lazy"

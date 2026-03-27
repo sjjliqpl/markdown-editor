@@ -1,8 +1,13 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell, protocol, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
+
+// Register custom protocol for loading local images referenced in markdown files
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'local-resource', privileges: { standard: false, secure: true, supportFetchAPI: true, stream: true } },
+]);
 
 // Track file path requested before the window is ready (macOS open-file / argv)
 let pendingFilePath = null;
@@ -189,6 +194,12 @@ ipcMain.handle('dialog:save', async (_event, defaultName, content) => {
 });
 
 app.whenReady().then(() => {
+  // Serve local files (images etc.) referenced by markdown documents
+  protocol.handle('local-resource', (request) => {
+    const filePath = decodeURIComponent(new URL(request.url).pathname);
+    return net.fetch('file://' + filePath);
+  });
+
   buildMenu();
   createWindow();
 

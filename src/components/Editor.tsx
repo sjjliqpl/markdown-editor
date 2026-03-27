@@ -66,9 +66,18 @@ export const Editor: React.FC = () => {
     });
   }, []);
 
-  const { fileName, openFile, saveFile, saveFileAs } = useFileSystem(
+  const handleExternalOpen = useCallback(() => {
+    startTransition(() => {
+      setViewMode('preview');
+    });
+    setShowToc(true);
+    localStorage.setItem('markdown-toc-open', 'true');
+  }, []);
+
+  const { fileName, fileDir, openFile, saveFile, saveFileAs } = useFileSystem(
     content,
-    setContent
+    setContent,
+    handleExternalOpen,
   );
 
   useAutoSave(content);
@@ -422,6 +431,7 @@ export const Editor: React.FC = () => {
               ref={previewRef}
               content={deferredContent}
               fontFamily={fontFamily}
+              fileDir={fileDir}
             />
           </div>
         )}
