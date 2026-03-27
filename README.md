@@ -54,6 +54,7 @@
 | **图标** | `lucide-react` |
 | **PDF 导出** | `jsPDF` + `html2canvas` |
 | **图片导出** | `html2canvas` |
+| **桌面应用** | Electron 41 + electron-builder |
 | **性能优化** | `useDeferredValue` + `useTransition` |
 
 ---
@@ -82,6 +83,18 @@ npm run build
 
 构建产物会生成在 `dist` 目录。
 
+### 打包桌面应用
+
+```bash
+# 开发模式（Vite + Electron 同时启动）
+npm run electron:dev
+
+# 构建并打包为当前平台安装包
+npm run dist
+```
+
+打包产物输出到 `release/` 目录。
+
 ### 代码检查
 
 ```bash
@@ -90,7 +103,53 @@ npm run lint
 
 ---
 
-## ⌨️ 快捷键
+## 🖥️ 桌面应用（Electron）
+
+除了 Web 版本，本项目还支持打包为原生桌面应用，基于 **Electron** 构建。
+
+### 平台支持
+
+| 平台 | 输出格式 | 说明 |
+|------|---------|------|
+| macOS | `.dmg` 安装包 | 支持 Apple Silicon (arm64) 和 Intel (x64) |
+| Windows | `.exe` (NSIS) | x64 安装包 |
+| Linux | `.AppImage` | x64 通用包 |
+
+> 运行 `npm run dist` 时，electron-builder 自动检测当前系统并构建对应平台版本。
+
+### 桌面版额外功能
+
+- **原生文件对话框** — 打开/保存使用系统原生对话框，支持完整文件路径管理
+- **原生应用菜单** — File / Edit / View / Window 标准菜单，快捷键完整支持
+- **macOS 沉浸式标题栏** — `hiddenInset` 样式，贴合 macOS 设计规范
+
+### 开发模式（Electron）
+
+```bash
+npm run electron:dev
+```
+
+同时启动 Vite 开发服务器和 Electron 窗口，支持热更新。
+
+### 打包为安装包
+
+```bash
+npm run dist
+```
+
+打包产物输出到 `release/` 目录：
+
+```
+release/
+├── mac-arm64/
+│   └── Markdown Editor.app      # 应用程序包
+├── Markdown Editor-1.0.0-arm64.dmg  # macOS 安装镜像
+└── builder-effective-config.yaml
+```
+
+---
+
+
 
 | 快捷键 | 功能 |
 |--------|------|
@@ -169,6 +228,9 @@ npm run lint
 ## 📁 项目结构
 
 ```
+electron/
+├── main.cjs                    # Electron 主进程（窗口、菜单、IPC 文件对话框）
+└── preload.cjs                 # 预加载脚本（contextBridge 暴露 electronAPI）
 src/
 ├── components/
 │   ├── Editor.tsx              # 主编辑器容器（状态管理、布局）

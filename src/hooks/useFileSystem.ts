@@ -1,4 +1,19 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+
+// Type definition for Electron IPC bridge injected by preload.cjs
+declare global {
+  interface Window {
+    electronAPI?: {
+      openFile: () => Promise<{ filePath: string; fileName: string; content: string } | null>;
+      writeFile: (filePath: string, content: string) => Promise<{ success: boolean; error?: string }>;
+      saveFileAs: (defaultName: string, content: string) => Promise<{ filePath: string; fileName: string } | null>;
+      onMenuOpen: (cb: () => void) => void;
+      onMenuSave: (cb: () => void) => void;
+      onMenuSaveAs: (cb: () => void) => void;
+      removeMenuListeners: () => void;
+    };
+  }
+}
 
 export const useFileSystem = (
   content: string,
@@ -6,10 +21,24 @@ export const useFileSystem = (
 ) => {
   const [fileName, setFileName] = useState<string>('Untitled.md');
   const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(null);
+  // Track native file path when running inside Electron
+  const [nativeFilePath, setNativeFilePath] = useState<string | null>(null);
+
+  const isElectron = typeof window !== 'undefined' && !!window.electronAPI;
 
   const openFile = useCallback(async () => {
     try {
-      // 尝试使用 File System Access API
+      if (isElectron) {
+        const result = await window.electronAPI!.openFile();
+        if (result) {
+          setContent(result.content);
+          setFileName(result.fileName);
+          setNativeFilePath(result.filePath);
+          setFileHandle(null);
+        }
+        return;
+      }
+
       if ('showOpenFilePicker' in window) {
         const [handle] = await (window as any).showOpenFilePicker({
           types: [
@@ -29,7 +58,6 @@ export const useFileSystem = (
         setFileName(file.name);
         setFileHandle(handle);
       } else {
-        // 降级方案：使用传统的 input file
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.md,.markdown,.txt';
@@ -46,25 +74,19 @@ export const useFileSystem = (
     } catch (err) {
       console.error('Error opening file:', err);
     }
-  }, [setContent]);
-
-  const saveFile = useCallback(async () => {
-    try {
-      if (fileHandle) {
-        const writable = await fileHandle.createWritable();
-        await writable.write(content);
-        await writable.close();
-      } else {
-        await saveFileAs();
-      }
-    } catch (err) {
-      console.error('Error saving file:', err);
-      await saveFileAs();
-    }
-  }, [content, fileHandle]);
+  }, [setContent, isElectron]);
 
   const saveFileAs = useCallback(async () => {
     try {
+      if (isElectron) {
+        const result = await window.electronAPI!.saveFileAs(fileName, content);
+        if (result) {
+          setFileName(result.fileName);
+          setNativeFilePath(result.filePath);
+        }
+        return;
+      }
+
       if ('showSaveFilePicker' in window) {
         const handle = await (window as any).showSaveFilePicker({
           suggestedName: fileName,
@@ -82,7 +104,6 @@ export const useFileSystem = (
         setFileHandle(handle);
         setFileName(handle.name);
       } else {
-        // 降级方案：使用 Blob 下载
         const blob = new Blob([content], { type: 'text/markdown' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -94,7 +115,40 @@ export const useFileSystem = (
     } catch (err) {
       console.error('Error saving file:', err);
     }
-  }, [content, fileName]);
+  }, [content, fileName, isElectron]);
+
+  const saveFile = useCallback(async () => {
+    try {
+      if (isElectron) {
+        if (nativeFilePath) {
+          await window.electronAPI!.writeFile(nativeFilePath, content);
+        } else {
+          await saveFileAs();
+        }
+        return;
+      }
+
+      if (fileHandle) {
+        const writable = await fileHandle.createWritable();
+        await writable.write(content);
+        await writable.close();
+      } else {
+        await saveFileAs();
+      }
+    } catch (err) {
+      console.error('Error saving file:', err);
+      await saveFileAs();
+    }
+  }, [content, fileHandle, nativeFilePath, saveFileAs, isElectron]);
+
+  // Wire up native app menu events from Electron
+  useEffect(() => {
+    if (!isElectron) return;
+    window.electronAPI!.onMenuOpen(openFile);
+    window.electronAPI!.onMenuSave(saveFile);
+    window.electronAPI!.onMenuSaveAs(saveFileAs);
+    return () => window.electronAPI!.removeMenuListeners();
+  }, [isElectron, openFile, saveFile, saveFileAs]);
 
   return {
     fileName,
