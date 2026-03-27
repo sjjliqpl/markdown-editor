@@ -8,6 +8,10 @@
 
 ## 📸 应用截图
 
+### 桌面应用（Electron）
+
+![桌面模式](docs/screenshots/08-desktop-mode.png)
+
 ### 目录面板（浅色）
 
 ![目录面板 - 浅色主题](docs/screenshots/05-toc-light.png)
@@ -31,7 +35,7 @@
 | 🎨 **语法高亮** | 基于 `react-syntax-highlighter` 的代码块多语言高亮 |
 | 📸 **图片支持** | 支持拖拽上传和 `Ctrl+V` 粘贴图片，自动生成 Markdown 语法 |
 | 💾 **自动保存** | 每隔 2 秒自动将内容保存至 `localStorage`，防止内容丢失 |
-| 🌙 **三档主题** | 浅色 / 深色 / 跟随系统（Auto），持久化到 `localStorage` |
+| 🌙 **主题自适应** | 自动跟随系统 `prefers-color-scheme`，无需手动切换 |
 | 🔤 **字体切换** | 支持多种正文字体（衬线体 / 无衬线体 / 等宽体）切换 |
 | 🌍 **国际化** | 中英文界面切换，所有 UI 文案完整翻译 |
 | ⌨️ **格式工具栏** | 一键插入加粗、斜体、标题、代码块、表格、链接等格式 |
@@ -219,7 +223,7 @@ release/
 
 ### 主题与字体
 
-- 主题模式：**浅色** / **深色** / **Auto**（跟随系统 `prefers-color-scheme`）
+- 主题模式：**自动跟随系统**（`prefers-color-scheme`），实时响应系统深色/浅色切换
 - 字体选项：衬线字体（Source Serif 4）、无衬线字体、等宽字体
 - 所有偏好设置持久化存储至 `localStorage`
 
