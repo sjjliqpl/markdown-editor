@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { appAPI } from '../lib/appAPI';
 import {
   FolderOpen,
   Save,
@@ -55,27 +56,42 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onTocToggle,
 }) => {
   const [showFileMenu, setShowFileMenu] = useState(false);
+  const fileMenuRef = useRef<HTMLDivElement>(null);
   const tr = t(locale);
 
+  // Close dropdown menus when clicking anywhere outside
+  useEffect(() => {
+    if (!showFileMenu) return;
+    const handleClick = (e: MouseEvent) => {
+      if (fileMenuRef.current && !fileMenuRef.current.contains(e.target as Node)) {
+        setShowFileMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showFileMenu]);
+
   return (
-    <div className="no-print" style={{
-      height: '52px',
-      background: 'var(--bg-secondary)',
-      borderBottom: '1px solid var(--border)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '0 16px',
-      // macOS traffic light buttons need ~80px left padding with hiddenInset titlebar
-      paddingLeft: (typeof window !== 'undefined' && window.electronAPI?.platform === 'darwin') ? '80px' : '16px',
-      fontFamily: 'var(--font-ui)',
-      position: 'relative',
-      zIndex: 50,
-      WebkitAppRegion: 'drag',
-    } as React.CSSProperties}>
+    <div
+      className="no-print"
+      style={{
+        height: '52px',
+        background: 'var(--bg-secondary)',
+        borderBottom: '1px solid var(--border)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 16px',
+        // Electron macOS traffic lights need ~80px left padding
+        paddingLeft: appAPI.platform === 'darwin' ? '80px' : '16px',
+        fontFamily: 'var(--font-ui)',
+        position: 'relative',
+        zIndex: 50,
+        WebkitAppRegion: 'drag',
+      } as React.CSSProperties}>
       {/* Left: Logo + File name */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-        {!window.electronAPI && (
+        {typeof window !== 'undefined' && !('__TAURI_INTERNALS__' in window) && !window.electronAPI && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{
@@ -104,10 +120,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         )}
 
         {/* File menu */}
-        <div style={{ position: 'relative' }}>
+        <div ref={fileMenuRef} style={{ position: 'relative' }}>
           <button
             onClick={() => setShowFileMenu(!showFileMenu)}
-            onBlur={() => setTimeout(() => setShowFileMenu(false), 150)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -341,7 +356,20 @@ const FontSelector: React.FC<{
   locale: Locale;
 }> = ({ fontFamily, onFontChange, locale }) => {
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const tr = t(locale);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
 
   const currentOpt = FONT_OPTIONS.find(o => o.id === fontFamily) ?? FONT_OPTIONS[0];
 
@@ -349,10 +377,9 @@ const FontSelector: React.FC<{
   const zhFonts = FONT_OPTIONS.filter(o => o.group === 'zh');
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div ref={containerRef} style={{ position: 'relative' }}>
       <button
         onClick={() => setOpen(o => !o)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
         title={tr.fontLabel}
         style={{
           display: 'flex',

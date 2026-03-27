@@ -267,11 +267,14 @@ const MarkdownPreviewInner: React.ForwardRefRenderFunction<MarkdownPreviewHandle
             img({ src, alt }) {
               let resolvedSrc = src;
               if (src && fileDir && !/^(https?:|data:|blob:)/i.test(src)) {
-                // Resolve relative paths against the file's directory
                 const absolutePath = src.startsWith('/')
                   ? src
                   : `${fileDir}/${src}`;
-                resolvedSrc = `local-resource://${encodeURI(absolutePath)}`;
+                // Tauri uses asset:// protocol; Electron uses local-resource://
+                const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+                resolvedSrc = isTauri
+                  ? `asset://localhost/${encodeURI(absolutePath.replace(/^\//, ''))}`
+                  : `local-resource://${encodeURI(absolutePath)}`;
               }
               return (
                 <img

@@ -12,8 +12,11 @@ import { useAutoSave } from '../hooks/useAutoSave';
 import { useTheme } from '../hooks/useTheme';
 import { useLocale } from '../hooks/useLocale';
 import { useFontFamily } from '../hooks/useFontFamily';
+import type { FontFamily } from '../hooks/useFontFamily';
 import { useToc } from '../hooks/useToc';
 import { t } from '../i18n';
+import { appAPI, isTauri } from '../lib/appAPI';
+import type { UnlistenFn } from '@tauri-apps/api/event';
 
 const INITIAL_CONTENT = `# Welcome to Markdown Editor
 
@@ -115,8 +118,65 @@ export const Editor: React.FC = () => {
     setContent(newContent);
   }, []);
 
+  // Tauri: update window title when fileName changes
+  useEffect(() => {
+    if (isTauri) {
+      appAPI.setWindowTitle(fileName);
+    }
+  }, [fileName]);
+
+  // Tauri: listen for native menu events (view mode, TOC, locale, font, export image)
+  useEffect(() => {
+    if (!isTauri) return;
+
+    const unlisteners: UnlistenFn[] = [];
+    let cancelled = false;
+
+    (async () => {
+      const fns = await Promise.all([
+        appAPI.onMenuViewMode((mode) => {
+          if (mode === 'editor' || mode === 'split' || mode === 'preview') {
+            startTransition(() => setViewMode(mode));
+          }
+        }),
+        appAPI.onMenuToggleToc(() => {
+          setShowToc(prev => {
+            const next = !prev;
+            localStorage.setItem('markdown-toc-open', String(next));
+            return next;
+          });
+        }),
+        appAPI.onMenuToggleLocale(() => {
+          toggleLocale();
+        }),
+        appAPI.onMenuFontChange((fontId) => {
+          setFontFamily(fontId as FontFamily);
+        }),
+        appAPI.onMenuExportImage(async () => {
+          await appAPI.nativePrint();
+        }),
+      ]);
+      if (!cancelled) {
+        unlisteners.push(...fns);
+      } else {
+        fns.forEach((fn) => fn());
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      unlisteners.forEach((fn) => fn());
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Intentionally empty — callbacks use state setters (stable)
+
   const handleExportImage = useCallback(async () => {
     const tr = t(locale);
+    // In Tauri, html2canvas hangs in WKWebView — use Tauri's native print
+    if (isTauri) {
+      await appAPI.nativePrint();
+      return;
+    }
     // Use the inner scrollable preview element to capture full content height
     const previewEl = document.getElementById('markdown-preview') as HTMLDivElement | null;
     if (!previewEl) {
@@ -162,6 +222,11 @@ export const Editor: React.FC = () => {
 
   const handleExportPdfFile = useCallback(async () => {
     const tr = t(locale);
+    // In Tauri, html2canvas hangs in WKWebView — use Tauri's native print
+    if (isTauri) {
+      await appAPI.nativePrint();
+      return;
+    }
     const previewEl = document.getElementById('markdown-preview') as HTMLDivElement | null;
     if (!previewEl) {
       alert(tr.exportPdfNoPreview);
@@ -345,22 +410,25 @@ export const Editor: React.FC = () => {
           </div>
         </div>
       )}
-      <Toolbar
-        onOpen={openFile}
-        onSave={saveFile}
-        onSaveAs={saveFileAs}
-        onExportPdfFile={handleExportPdfFile}
-        onExportImage={handleExportImage}
-        fileName={fileName}
-        viewMode={viewMode}
-        onViewModeChange={handleViewModeChange}
-        locale={locale}
-        onToggleLocale={toggleLocale}
-        fontFamily={fontFamily}
-        onFontChange={setFontFamily}
-        showToc={showToc}
-        onTocToggle={handleTocToggle}
-      />
+      {/* In Tauri, all controls are in native menus — no custom toolbar */}
+      {!isTauri && (
+        <Toolbar
+          onOpen={openFile}
+          onSave={saveFile}
+          onSaveAs={saveFileAs}
+          onExportPdfFile={handleExportPdfFile}
+          onExportImage={handleExportImage}
+          fileName={fileName}
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
+          locale={locale}
+          onToggleLocale={toggleLocale}
+          fontFamily={fontFamily}
+          onFontChange={setFontFamily}
+          showToc={showToc}
+          onTocToggle={handleTocToggle}
+        />
+      )}
 
       <div style={{
         flex: 1,

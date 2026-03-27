@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "dist": "npm run build && electron-builder --$(node -e \"process.stdout.write(process.arch)\")"
+    "dist": "npm run build && electron-builder --$(node -e \"process.stdout.write(process.arch)\")",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build --target aarch64-apple-darwin"
   },
   "build": {
     "appId": "com.markdown-editor.app",
@@ -25,14 +27,19 @@
     ],
     "fileAssociations": [
       {
-        "ext": ["md", "markdown"],
+        "ext": [
+          "md",
+          "markdown"
+        ],
         "name": "Markdown Document",
         "description": "Markdown Document",
         "mimeType": "text/markdown",
         "role": "Editor"
       },
       {
-        "ext": ["txt"],
+        "ext": [
+          "txt"
+        ],
         "name": "Text Document",
         "description": "Plain Text Document",
         "mimeType": "text/plain",
@@ -48,17 +55,29 @@
             "CFBundleTypeName": "Markdown Document",
             "CFBundleTypeRole": "Editor",
             "LSHandlerRank": "Default",
-            "LSItemContentTypes": ["net.daringfireball.markdown", "public.plain-text"],
-            "CFBundleTypeExtensions": ["md", "markdown", "txt"]
+            "LSItemContentTypes": [
+              "net.daringfireball.markdown",
+              "public.plain-text"
+            ],
+            "CFBundleTypeExtensions": [
+              "md",
+              "markdown",
+              "txt"
+            ]
           }
         ],
         "UTImportedTypeDeclarations": [
           {
             "UTTypeIdentifier": "net.daringfireball.markdown",
             "UTTypeDescription": "Markdown Document",
-            "UTTypeConformsTo": ["public.plain-text"],
+            "UTTypeConformsTo": [
+              "public.plain-text"
+            ],
             "UTTypeTagSpecification": {
-              "public.filename-extension": ["md", "markdown"]
+              "public.filename-extension": [
+                "md",
+                "markdown"
+              ]
             }
           }
         ]
@@ -71,31 +90,20 @@
       "target": "AppImage"
     }
   },
-  "dependencies": {
-    "@tailwindcss/postcss": "^4.2.1",
-    "@tailwindcss/typography": "^0.5.19",
-    "@types/html2canvas": "^0.5.35",
-    "@types/react-syntax-highlighter": "^15.5.13",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^4.2.0",
-    "lucide-react": "^0.575.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-markdown": "^10.1.0",
-    "react-syntax-highlighter": "^16.1.0",
-    "rehype-react": "^8.0.0",
-    "rehype-sanitize": "^6.0.0",
-    "remark-gfm": "^4.0.1",
-    "remark-parse": "^11.0.0",
-    "remark-rehype": "^11.1.2",
-    "shiki": "^3.23.0",
-    "unified": "^11.0.5"
-  },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@tailwindcss/postcss": "^4.2.1",
+    "@tailwindcss/typography": "^0.5.19",
+    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/cli": "^2.10.1",
+    "@tauri-apps/plugin-dialog": "^2.6.0",
+    "@tauri-apps/plugin-fs": "^2.4.5",
+    "@tauri-apps/plugin-os": "^2.3.2",
+    "@types/html2canvas": "^0.5.35",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.27",
     "concurrently": "^9.2.1",
@@ -106,10 +114,24 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
+    "lucide-react": "^0.575.0",
     "postcss": "^8.5.6",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "react-syntax-highlighter": "^16.1.0",
+    "rehype-react": "^8.0.0",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "shiki": "^4.0.2",
     "tailwindcss": "^4.2.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
+    "unified": "^11.0.5",
     "vite": "^7.3.1",
     "wait-on": "^9.0.4"
   }
