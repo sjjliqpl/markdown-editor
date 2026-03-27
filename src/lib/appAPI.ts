@@ -81,6 +81,14 @@ export const appAPI = {
     }
   },
 
+  /** Check if this window was opened with a file (via file association / double-click). */
+  getPendingFile: async (): Promise<FileResult | null> => {
+    if (isTauri) {
+      return invoke<FileResult | null>('get_pending_file');
+    }
+    return null;
+  },
+
   // ── Menu event listeners ──
 
   onMenuOpen: (callback: () => void): Promise<UnlistenFn> => {

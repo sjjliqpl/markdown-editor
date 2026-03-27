@@ -1,6 +1,16 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
+
+/// Tracks how many files have been opened via file-association / double-click.
+/// First file → main window; subsequent files → new windows.
+static OPEN_COUNT: AtomicUsize = AtomicUsize::new(0);
+
+/// Stores files waiting to be loaded by a window's frontend on mount.
+struct PendingFiles(Mutex<HashMap<String, FileResult>>);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -104,6 +114,16 @@ async fn save_file_as(
         }
         None => Ok(None),
     }
+}
+
+/// Return a pending file for the calling window (set by file-association open).
+#[tauri::command]
+async fn get_pending_file(
+    window: tauri::WebviewWindow,
+    state: tauri::State<'_, PendingFiles>,
+) -> Result<Option<FileResult>, String> {
+    let mut map = state.0.lock().map_err(|e| e.to_string())?;
+    Ok(map.remove(window.label()))
 }
 
 /// Build the native application menu with File/Edit/View/Window items.
@@ -264,13 +284,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            // Focus existing window if user tries to open a second instance
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
-        }))
+        .manage(PendingFiles(Mutex::new(HashMap::new())))
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -280,38 +294,69 @@ pub fn run() {
                 )?;
             }
             build_menu(app.handle())?;
-
-            // macOS: check if app was launched with a file argument (e.g. `open file.md`)
-            #[cfg(target_os = "macos")]
-            {
-                let args: Vec<String> = std::env::args().collect();
-                if args.len() > 1 {
-                    let path = PathBuf::from(&args[1]);
-                    if path.exists() {
-                        if let Ok(content) = std::fs::read_to_string(&path) {
-                            let file_name = path
-                                .file_name()
-                                .unwrap_or_default()
-                                .to_string_lossy()
-                                .to_string();
-                            let _ = app.handle().emit(
-                                "file:opened",
-                                FileResult {
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            open_file,
+            write_file,
+            save_file_as,
+            get_pending_file
+        ])
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            #[cfg(desktop)]
+            if let tauri::RunEvent::Opened { urls } = event {
+                for url in urls {
+                    if let Ok(path) = url.to_file_path() {
+                        if path.exists() {
+                            if let Ok(content) = std::fs::read_to_string(&path) {
+                                let file_name = path
+                                    .file_name()
+                                    .unwrap_or_default()
+                                    .to_string_lossy()
+                                    .to_string();
+                                let file_result = FileResult {
                                     file_path: path.to_string_lossy().to_string(),
-                                    file_name,
+                                    file_name: file_name.clone(),
                                     content,
-                                },
-                            );
+                                };
+
+                                let count = OPEN_COUNT.fetch_add(1, Ordering::SeqCst);
+
+                                if count == 0 {
+                                    // First file → load into main window
+                                    let state = app_handle.state::<PendingFiles>();
+                                    if let Ok(mut map) = state.0.lock() {
+                                        map.insert("main".to_string(), file_result.clone());
+                                    }
+                                    // Also emit in case webview is already loaded
+                                    if let Some(window) = app_handle.get_webview_window("main") {
+                                        let _ = window.emit("file:opened", &file_result);
+                                    }
+                                } else {
+                                    // Subsequent files → new window
+                                    let label = format!("editor-{}", count);
+                                    let state = app_handle.state::<PendingFiles>();
+                                    if let Ok(mut map) = state.0.lock() {
+                                        map.insert(label.clone(), file_result);
+                                    }
+                                    let _ = tauri::WebviewWindowBuilder::new(
+                                        app_handle,
+                                        &label,
+                                        tauri::WebviewUrl::App("index.html".into()),
+                                    )
+                                    .title(&file_name)
+                                    .inner_size(1280.0, 800.0)
+                                    .min_inner_size(800.0, 600.0)
+                                    .build();
+                                }
+                            }
                         }
                     }
                 }
             }
-
-            Ok(())
-        })
-        .invoke_handler(tauri::generate_handler![open_file, write_file, save_file_as])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        });
 }
 
 

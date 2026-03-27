@@ -201,6 +201,21 @@ export const useFileSystem = (
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNative]); // Intentionally stable — callbacks access current values via refs
 
+  // On mount: check if this window was opened via file association (double-click)
+  useEffect(() => {
+    if (!isNative) return;
+    appAPI.getPendingFile().then((file) => {
+      if (file) {
+        setContent(file.content);
+        setFileName(file.fileName);
+        setNativeFilePath(file.filePath);
+        setFileHandle(null);
+        onExternalOpenRef.current?.();
+      }
+    }).catch(console.error);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
+
   return { fileName, fileDir, openFile, saveFile, saveFileAs };
 };
 
