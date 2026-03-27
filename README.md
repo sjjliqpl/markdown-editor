@@ -2,7 +2,12 @@
 
 一个极简、高性能的 Markdown 编辑器，支持实时预览、多主题切换、目录导航、图片处理和 PDF 导出。
 
-🌐 **Live Demo**: [https://sjjliqpl.github.io/markdown-editor/](https://sjjliqpl.github.io/markdown-editor/)
+![版本](https://img.shields.io/github/v/release/sjjliqpl/markdown-editor?label=最新版本&color=blue)
+![平台](https://img.shields.io/badge/平台-macOS%20Apple%20Silicon-lightgrey?logo=apple)
+![License](https://img.shields.io/badge/License-MIT-green)
+
+🌐 **Live Demo**: [https://sjjliqpl.github.io/markdown-editor/](https://sjjliqpl.github.io/markdown-editor/)  
+📦 **下载桌面版**: [GitHub Releases](https://github.com/sjjliqpl/markdown-editor/releases/latest)
 
 ---
 
