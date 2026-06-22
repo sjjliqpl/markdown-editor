@@ -17,6 +17,7 @@
     "fs:allow-read-text-file",
     "fs:allow-write-text-file",
     "fs:allow-exists",
-    "os:default"
+    "os:default",
+    "opener:default"
   ]
 }

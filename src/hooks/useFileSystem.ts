@@ -10,6 +10,7 @@ declare global {
       openFile: () => Promise<{ filePath: string; fileName: string; content: string } | null>;
       writeFile: (filePath: string, content: string) => Promise<{ success: boolean; error?: string }>;
       saveFileAs: (defaultName: string, content: string) => Promise<{ filePath: string; fileName: string } | null>;
+      openExternalUrl?: (url: string) => Promise<void>;
       onMenuOpen: (cb: () => void) => void;
       onMenuSave: (cb: () => void) => void;
       onMenuSaveAs: (cb: () => void) => void;
@@ -218,4 +219,3 @@ export const useFileSystem = (
 
   return { fileName, fileDir, openFile, saveFile, saveFileAs };
 };
-

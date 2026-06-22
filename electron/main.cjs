@@ -193,6 +193,10 @@ ipcMain.handle('dialog:save', async (_event, defaultName, content) => {
   return { filePath, fileName: path.basename(filePath) };
 });
 
+ipcMain.handle('shell:openExternal', async (_event, url) => {
+  await shell.openExternal(url);
+});
+
 app.whenReady().then(() => {
   // Serve local files (images etc.) referenced by markdown documents
   protocol.handle('local-resource', (request) => {

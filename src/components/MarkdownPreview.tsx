@@ -6,6 +6,7 @@ import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { FontFamily } from '../hooks/useFontFamily';
 import { slugify } from '../hooks/useToc';
+import { appAPI } from '../lib/appAPI';
 
 /** Recursively extract plain text from React children */
 function extractText(children: React.ReactNode): string {
@@ -60,6 +61,16 @@ const MarkdownPreviewInner: React.ForwardRefRenderFunction<MarkdownPreviewHandle
     zcool:          'var(--font-zcool)',
   };
   const resolvedFont = fontCssMap[fontFamily] ?? 'var(--font-serif)';
+
+  const handleLinkClick = React.useCallback((event: React.MouseEvent<HTMLAnchorElement>, href?: string) => {
+    if (!href) return;
+    if (/^https?:\/\//i.test(href)) {
+      event.preventDefault();
+      appAPI.openExternalUrl(href).catch((error) => {
+        console.error('Error opening external link:', error);
+      });
+    }
+  }, []);
 
   React.useEffect(() => {
     // Check current theme
@@ -234,6 +245,20 @@ const MarkdownPreviewInner: React.ForwardRefRenderFunction<MarkdownPreviewHandle
               const text = extractText(children);
               const id = slugify(text, headingIndexRef.current++);
               return <h3 data-heading-id={id} id={id} {...props}>{children}</h3>;
+            },
+            a({ href, children, ...props }) {
+              const isExternal = typeof href === 'string' && /^https?:\/\//i.test(href);
+              return (
+                <a
+                  href={href}
+                  target={isExternal ? '_blank' : undefined}
+                  rel={isExternal ? 'noopener noreferrer' : undefined}
+                  onClick={(event) => handleLinkClick(event, href)}
+                  {...props}
+                >
+                  {children}
+                </a>
+              );
             },
             code({ node, inline, className, children, ...props }: any) {
               const match = /language-(\w+)/.exec(className || '');

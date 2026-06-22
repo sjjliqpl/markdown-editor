@@ -143,7 +143,18 @@ npm run lint
 
 ## 🖥️ 桌面应用（Tauri）
 
-本项目使用 **Tauri 2** 构建原生桌面应用，相比 Electron 体积大幅缩小：
+本项目使用 **Tauri 2** 构建原生桌面应用。Tauri 使用系统 WebView（macOS 上是 WKWebView）渲染前端页面，并通过 Rust 后端提供原生文件、菜单、窗口、系统集成等能力，因此相比 Electron 体积更小。
+
+本项目的 Tauri 配置和 Rust 后端代码位于 `src-tauri/` 目录。常用命令已经写入 `package.json`：
+
+```bash
+npm run tauri:dev
+npm run tauri:build
+```
+
+项目已在 `devDependencies` 中包含 `@tauri-apps/cli`，通常不需要全局安装 Tauri CLI；先执行 `npm install`，再运行上面的 npm scripts 即可。
+
+相比 Electron，Tauri 桌面包体积大幅缩小：
 
 | | Electron | Tauri |
 |---|---|---|
@@ -156,6 +167,69 @@ npm run lint
 - **macOS 11.0+**（Big Sur 或更高版本）
 - **Apple Silicon (arm64)**（当前构建目标）
 - Rust 1.70+（仅开发时需要）
+
+### 没有安装 Tauri 时怎么办
+
+开发 Tauri 应用需要 Node.js / npm 和 Rust 工具链。最终用户运行打包后的 `.app` 或 DMG 不需要安装 Rust 或 Tauri。
+
+1. 检查 Node.js 和 npm：
+
+```bash
+node -v
+npm -v
+```
+
+2. 安装 Rust：
+
+```bash
+curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh
+```
+
+安装完成后按终端提示重新加载环境变量，或重新打开终端。
+
+3. 回到本项目安装依赖：
+
+```bash
+npm install
+```
+
+4. 启动 Tauri 桌面开发模式：
+
+```bash
+npm run tauri:dev
+```
+
+5. 打包桌面应用：
+
+```bash
+npm run tauri:build
+```
+
+当前打包脚本使用 `--target aarch64-apple-darwin`，面向 macOS Apple Silicon。
+
+### 初始化新的 Tauri 2 项目
+
+如果要从零创建一个新的 Tauri 2 应用，推荐使用官方脚手架：
+
+```bash
+npm create tauri-app@latest
+```
+
+如果已经有一个前端项目，可以在项目根目录初始化 Tauri：
+
+```bash
+npx tauri init
+```
+
+按提示生成 `src-tauri/` 后，可以用下面的命令验证：
+
+```bash
+npx tauri dev
+```
+
+也可以像本项目一样，把 `tauri dev` 和 `tauri build` 配置到 `package.json` 的 npm scripts 中。
+
+> macOS 文件关联、双击打开 `.md` 文件、`Open With` 等系统级能力需要用打包后的 `.app` 或 DMG 验证；`tauri dev` 不能完整验证 Launch Services 绑定行为。
 
 ### 桌面版额外功能
 

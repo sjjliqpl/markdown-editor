@@ -22,6 +22,23 @@ export interface WriteResult {
   error?: string;
 }
 
+declare global {
+  interface Window {
+    electronAPI?: {
+      platform: string;
+      openFile: () => Promise<FileResult | null>;
+      writeFile: (filePath: string, content: string) => Promise<WriteResult>;
+      saveFileAs: (defaultName: string, content: string) => Promise<SaveResult | null>;
+      openExternalUrl?: (url: string) => Promise<void>;
+      onMenuOpen: (cb: () => void) => void;
+      onMenuSave: (cb: () => void) => void;
+      onMenuSaveAs: (cb: () => void) => void;
+      onFileOpened: (cb: (data: FileResult) => void) => void;
+      removeMenuListeners: () => void;
+    };
+  }
+}
+
 // Detect runtime context
 export const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 const isElectron = typeof window !== 'undefined' && 'electronAPI' in window;
@@ -87,6 +104,19 @@ export const appAPI = {
     } else {
       window.print();
     }
+  },
+
+  openExternalUrl: async (url: string): Promise<void> => {
+    if (isTauri) {
+      const { openUrl } = await import('@tauri-apps/plugin-opener');
+      await openUrl(url);
+      return;
+    }
+    if (isElectron && (window as any).electronAPI.openExternalUrl) {
+      await (window as any).electronAPI.openExternalUrl(url);
+      return;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
   },
 
   /** Check if this window was opened with a file (via file association / double-click). */

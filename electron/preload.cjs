@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openFile: () => ipcRenderer.invoke('dialog:open'),
   writeFile: (filePath, content) => ipcRenderer.invoke('file:write', filePath, content),
   saveFileAs: (defaultName, content) => ipcRenderer.invoke('dialog:save', defaultName, content),
+  openExternalUrl: (url) => ipcRenderer.invoke('shell:openExternal', url),
 
   // Listen for menu events
   onMenuOpen: (callback) => ipcRenderer.on('menu:open', callback),
