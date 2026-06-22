@@ -328,6 +328,8 @@ export const Editor: React.FC = () => {
 
   // Keyboard shortcuts
   useEffect(() => {
+    if (isTauri) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();

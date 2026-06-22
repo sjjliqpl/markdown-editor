@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, EventTarget, Manager};
 
 /// Tracks how many files have been opened via file-association / double-click.
 /// First file → main window; subsequent files → new windows.
@@ -116,14 +116,28 @@ async fn save_file_as(
     }
 }
 
+/// Set the native title for the calling window.
+#[tauri::command]
+async fn set_window_title(window: tauri::WebviewWindow, title: String) -> Result<(), String> {
+    window.set_title(&title).map_err(|e| e.to_string())
+}
+
 /// Return a pending file for the calling window (set by file-association open).
 #[tauri::command]
 async fn get_pending_file(
     window: tauri::WebviewWindow,
     state: tauri::State<'_, PendingFiles>,
 ) -> Result<Option<FileResult>, String> {
-    let mut map = state.0.lock().map_err(|e| e.to_string())?;
-    Ok(map.remove(window.label()))
+    let file = {
+        let mut map = state.0.lock().map_err(|e| e.to_string())?;
+        map.remove(window.label())
+    };
+
+    if let Some(file) = &file {
+        let _ = window.set_title(&file.file_name);
+    }
+
+    Ok(file)
 }
 
 /// Build the native application menu with File/Edit/View/Window items.
@@ -140,8 +154,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<()> {
     let save_as_item = MenuItemBuilder::with_id("save_as", "Save As…")
         .accelerator("CmdOrCtrl+Shift+S")
         .build(app)?;
-    let export_image_item = MenuItemBuilder::with_id("export_image", "Export Image…")
-        .build(app)?;
+    let export_image_item = MenuItemBuilder::with_id("export_image", "Export Image…").build(app)?;
     let print_item = MenuItemBuilder::with_id("print", "Export PDF / Print…")
         .accelerator("CmdOrCtrl+P")
         .build(app)?;
@@ -190,7 +203,8 @@ fn build_menu(app: &AppHandle) -> tauri::Result<()> {
     let font_dm_sans = MenuItemBuilder::with_id("font_sans", "DM Sans").build(app)?;
     let font_inter = MenuItemBuilder::with_id("font_inter", "Inter").build(app)?;
     let font_jetbrains = MenuItemBuilder::with_id("font_mono", "JetBrains Mono").build(app)?;
-    let font_noto_serif_sc = MenuItemBuilder::with_id("font_noto-serif-sc", "思源宋体").build(app)?;
+    let font_noto_serif_sc =
+        MenuItemBuilder::with_id("font_noto-serif-sc", "思源宋体").build(app)?;
     let font_noto_sans_sc = MenuItemBuilder::with_id("font_noto-sans-sc", "思源黑体").build(app)?;
     let font_zcool = MenuItemBuilder::with_id("font_zcool", "站酷小薇体").build(app)?;
 
@@ -256,20 +270,37 @@ fn build_menu(app: &AppHandle) -> tauri::Result<()> {
     app.on_menu_event(|app, event| {
         let id = event.id();
         let id_str = id.as_ref();
+        let focused_window = app
+            .webview_windows()
+            .into_values()
+            .find(|window| window.is_focused().unwrap_or(false));
+
+        let emit_to_focused = |event_name: &str, payload: serde_json::Value| -> tauri::Result<()> {
+            if let Some(window) = &focused_window {
+                app.emit_to(
+                    EventTarget::webview_window(window.label()),
+                    event_name,
+                    payload,
+                )
+            } else {
+                Ok(())
+            }
+        };
+
         let _ = match id_str {
-            "open"          => app.emit("menu:open", ()),
-            "save"          => app.emit("menu:save", ()),
-            "save_as"       => app.emit("menu:saveAs", ()),
-            "print"         => app.emit("menu:print", ()),
-            "export_image"  => app.emit("menu:exportImage", ()),
-            "view_editor"   => app.emit("menu:viewMode", "editor"),
-            "view_split"    => app.emit("menu:viewMode", "split"),
-            "view_preview"  => app.emit("menu:viewMode", "preview"),
-            "toggle_toc"    => app.emit("menu:toggleToc", ()),
-            "toggle_locale" => app.emit("menu:toggleLocale", ()),
+            "open" => emit_to_focused("menu:open", serde_json::Value::Null),
+            "save" => emit_to_focused("menu:save", serde_json::Value::Null),
+            "save_as" => emit_to_focused("menu:saveAs", serde_json::Value::Null),
+            "print" => emit_to_focused("menu:print", serde_json::Value::Null),
+            "export_image" => emit_to_focused("menu:exportImage", serde_json::Value::Null),
+            "view_editor" => emit_to_focused("menu:viewMode", serde_json::json!("editor")),
+            "view_split" => emit_to_focused("menu:viewMode", serde_json::json!("split")),
+            "view_preview" => emit_to_focused("menu:viewMode", serde_json::json!("preview")),
+            "toggle_toc" => emit_to_focused("menu:toggleToc", serde_json::Value::Null),
+            "toggle_locale" => emit_to_focused("menu:toggleLocale", serde_json::Value::Null),
             _ if id_str.starts_with("font_") => {
                 let font_id = &id_str[5..]; // strip "font_" prefix
-                app.emit("menu:fontChange", font_id)
+                emit_to_focused("menu:fontChange", serde_json::json!(font_id))
             }
             _ => Ok(()),
         };
@@ -300,6 +331,7 @@ pub fn run() {
             open_file,
             write_file,
             save_file_as,
+            set_window_title,
             get_pending_file
         ])
         .build(tauri::generate_context!())
@@ -332,16 +364,24 @@ pub fn run() {
                                     }
                                     if let Some(window) = app_handle.get_webview_window("main") {
                                         let _ = window.set_title(&file_name);
-                                        let _ = window.emit("file:opened", &file_result);
+                                        let _ = app_handle.emit_to(
+                                            EventTarget::webview_window("main"),
+                                            "file:opened",
+                                            &file_result,
+                                        );
                                     }
                                 } else {
                                     // Subsequent files → new window
-                                    let label = format!("editor-{}", count);
+                                    let mut label = format!("editor-{}", count);
+                                    while app_handle.get_webview_window(&label).is_some() {
+                                        let next_count = OPEN_COUNT.fetch_add(1, Ordering::SeqCst);
+                                        label = format!("editor-{}", next_count);
+                                    }
                                     let state = app_handle.state::<PendingFiles>();
                                     if let Ok(mut map) = state.0.lock() {
                                         map.insert(label.clone(), file_result);
                                     }
-                                    let _ = tauri::WebviewWindowBuilder::new(
+                                    if let Ok(window) = tauri::WebviewWindowBuilder::new(
                                         app_handle,
                                         &label,
                                         tauri::WebviewUrl::App("index.html".into()),
@@ -349,7 +389,10 @@ pub fn run() {
                                     .title(&file_name)
                                     .inner_size(1280.0, 800.0)
                                     .min_inner_size(800.0, 600.0)
-                                    .build();
+                                    .build()
+                                    {
+                                        let _ = window.set_focus();
+                                    }
                                 }
                             }
                         }
@@ -358,5 +401,3 @@ pub fn run() {
             }
         });
 }
-
-
