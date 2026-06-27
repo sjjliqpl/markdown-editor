@@ -311,6 +311,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
           value={value}
           height="100%"
           width="100%"
+          style={{ height: '100%' }}
           theme={codeMirrorTheme}
           basicSetup={false}
           extensions={extensions}
