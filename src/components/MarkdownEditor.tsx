@@ -61,7 +61,10 @@ const codeMirrorTheme = EditorView.theme({
     backgroundColor: 'var(--bg-hover)',
   },
   '.cm-selectionBackground, &.cm-focused .cm-selectionBackground': {
-    backgroundColor: 'var(--accent-subtle)',
+    background: 'var(--selection-bg)',
+  },
+  '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground': {
+    background: 'var(--selection-bg)',
   },
   '.cm-cursor': {
     borderLeftColor: 'var(--accent)',

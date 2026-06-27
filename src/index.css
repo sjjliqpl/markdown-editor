@@ -8,6 +8,8 @@
   --accent-hover: #d4922a;
   --accent-subtle: rgba(226, 163, 54, 0.12);
   --accent-glow: rgba(226, 163, 54, 0.25);
+  --selection-bg: rgba(96, 165, 250, 0.32);
+  --selection-fg: var(--text-primary);
 
   --radius-sm: 6px;
   --radius-md: 8px;
@@ -139,8 +141,8 @@ body {
 
 /* Selection */
 ::selection {
-  background: var(--accent-subtle);
-  color: var(--accent);
+  background: var(--selection-bg);
+  color: var(--selection-fg);
 }
 
 /* Focus ring */
