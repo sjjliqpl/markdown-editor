@@ -2,6 +2,24 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { appAPI } from '../lib/appAPI';
 import type { UnlistenFn } from '@tauri-apps/api/event';
 
+interface FilePickerWindow extends Window {
+  showOpenFilePicker?: (options?: FilePickerOptions) => Promise<FileSystemFileHandle[]>;
+  showSaveFilePicker?: (options?: FileSavePickerOptions) => Promise<FileSystemFileHandle>;
+}
+
+type FilePickerAccept = Record<string, string[]>;
+
+interface FilePickerOptions {
+  types?: Array<{
+    description?: string;
+    accept: FilePickerAccept;
+  }>;
+}
+
+interface FileSavePickerOptions extends FilePickerOptions {
+  suggestedName?: string;
+}
+
 // Keep Electron type declaration for backward compatibility
 declare global {
   interface Window {
@@ -11,6 +29,7 @@ declare global {
       writeFile: (filePath: string, content: string) => Promise<{ success: boolean; error?: string }>;
       saveFileAs: (defaultName: string, content: string) => Promise<{ filePath: string; fileName: string } | null>;
       openExternalUrl?: (url: string) => Promise<void>;
+      onMenuNew: (cb: () => void) => void;
       onMenuOpen: (cb: () => void) => void;
       onMenuSave: (cb: () => void) => void;
       onMenuSaveAs: (cb: () => void) => void;
@@ -24,6 +43,7 @@ export const useFileSystem = (
   content: string,
   setContent: (content: string) => void,
   onExternalOpen?: () => void,
+  onNewFile?: () => void,
 ) => {
   const [fileName, setFileName] = useState<string>('Untitled.md');
   const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(null);
@@ -31,6 +51,8 @@ export const useFileSystem = (
 
   const onExternalOpenRef = useRef(onExternalOpen);
   onExternalOpenRef.current = onExternalOpen;
+  const onNewFileRef = useRef(onNewFile);
+  onNewFileRef.current = onNewFile;
 
   const isNative = typeof window !== 'undefined' &&
     ('__TAURI_INTERNALS__' in window || !!window.electronAPI);
@@ -67,8 +89,9 @@ export const useFileSystem = (
         return;
       }
 
-      if ('showOpenFilePicker' in window) {
-        const [handle] = await (window as any).showOpenFilePicker({
+      const pickerWindow = window as FilePickerWindow;
+      if (pickerWindow.showOpenFilePicker) {
+        const [handle] = await pickerWindow.showOpenFilePicker({
           types: [
             {
               description: 'Markdown Files',
@@ -103,6 +126,15 @@ export const useFileSystem = (
     }
   }, [setContent, isNative]);
 
+  const newFile = useCallback(() => {
+    setContent('');
+    setFileName('Untitled.md');
+    setFileHandle(null);
+    setNativeFilePath(null);
+    localStorage.setItem('markdown-autosave', '');
+    onNewFileRef.current?.();
+  }, [setContent]);
+
   const saveFileAs = useCallback(async () => {
     try {
       if (isNative) {
@@ -114,8 +146,9 @@ export const useFileSystem = (
         return;
       }
 
-      if ('showSaveFilePicker' in window) {
-        const handle = await (window as any).showSaveFilePicker({
+      const pickerWindow = window as FilePickerWindow;
+      if (pickerWindow.showSaveFilePicker) {
+        const handle = await pickerWindow.showSaveFilePicker({
           suggestedName: fileNameRef.current,
           types: [{ description: 'Markdown Files', accept: { 'text/markdown': ['.md'] } }],
         });
@@ -171,6 +204,7 @@ export const useFileSystem = (
     (async () => {
       const fns = await Promise.all([
         appAPI.onMenuOpen(() => openFile()),
+        appAPI.onMenuNew(() => newFile()),
         appAPI.onMenuSave(() => saveFile()),
         appAPI.onMenuSaveAs(() => saveFileAs()),
         appAPI.onMenuPrint(async () => {
@@ -217,5 +251,5 @@ export const useFileSystem = (
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run once on mount
 
-  return { fileName, fileDir, openFile, saveFile, saveFileAs };
+  return { fileName, fileDir, newFile, openFile, saveFile, saveFileAs };
 };

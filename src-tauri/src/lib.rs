@@ -145,6 +145,9 @@ fn build_menu(app: &AppHandle) -> tauri::Result<()> {
     use tauri::menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
 
     // ── File ──
+    let new_item = MenuItemBuilder::with_id("new", "New")
+        .accelerator("CmdOrCtrl+N")
+        .build(app)?;
     let open_item = MenuItemBuilder::with_id("open", "Open…")
         .accelerator("CmdOrCtrl+O")
         .build(app)?;
@@ -160,6 +163,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<()> {
         .build(app)?;
 
     let file_menu = SubmenuBuilder::new(app, "File")
+        .item(&new_item)
         .item(&open_item)
         .separator()
         .item(&save_item)
@@ -288,6 +292,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<()> {
         };
 
         let _ = match id_str {
+            "new" => emit_to_focused("menu:new", serde_json::Value::Null),
             "open" => emit_to_focused("menu:open", serde_json::Value::Null),
             "save" => emit_to_focused("menu:save", serde_json::Value::Null),
             "save_as" => emit_to_focused("menu:saveAs", serde_json::Value::Null),

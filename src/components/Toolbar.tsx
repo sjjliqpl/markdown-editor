@@ -5,6 +5,7 @@ import {
   Save,
   Download,
   FileText,
+  FilePlus,
   PanelLeft,
   PanelRight,
   Columns2,
@@ -23,6 +24,7 @@ import { FONT_OPTIONS } from '../hooks/useFontFamily';
 type ViewMode = 'split' | 'editor' | 'preview';
 
 interface ToolbarProps {
+  onNewFile: () => void;
   onOpen: () => void;
   onSave: () => void;
   onSaveAs: () => void;
@@ -40,6 +42,7 @@ interface ToolbarProps {
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
+  onNewFile,
   onOpen,
   onSave,
   onSaveAs,
@@ -120,6 +123,34 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         )}
 
         {/* File menu */}
+        <button
+          onClick={onNewFile}
+          title={tr.newDocument}
+          aria-label={tr.newDocument}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '30px',
+            height: '26px',
+            color: 'var(--text-muted)',
+            background: 'transparent',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'var(--bg-hover)';
+            e.currentTarget.style.color = 'var(--text-primary)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = 'var(--text-muted)';
+          }}
+        >
+          <FilePlus size={14} />
+        </button>
+
         <div ref={fileMenuRef} style={{ position: 'relative' }}>
           <button
             onClick={() => setShowFileMenu(!showFileMenu)}
@@ -164,7 +195,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               animation: 'tooltipFadeIn 0.15s ease-out',
               zIndex: 100,
             }}>
+              <MenuItem icon={<FilePlus size={14} />} label={tr.newDocument} shortcut="⌘N" onClick={() => { onNewFile(); setShowFileMenu(false); }} />
               <MenuItem icon={<FolderOpen size={14} />} label={tr.openFile} shortcut="⌘O" onClick={() => { onOpen(); setShowFileMenu(false); }} />
+              <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />
               <MenuItem icon={<Save size={14} />} label={tr.save} shortcut="⌘S" onClick={() => { onSave(); setShowFileMenu(false); }} />
               <MenuItem icon={<Download size={14} />} label={tr.saveAs} onClick={() => { onSaveAs(); setShowFileMenu(false); }} />
               <div style={{ height: '1px', background: 'var(--border)', margin: '4px 0' }} />

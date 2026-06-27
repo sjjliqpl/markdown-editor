@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openExternalUrl: (url) => ipcRenderer.invoke('shell:openExternal', url),
 
   // Listen for menu events
+  onMenuNew: (callback) => ipcRenderer.on('menu:new', callback),
   onMenuOpen: (callback) => ipcRenderer.on('menu:open', callback),
   onMenuSave: (callback) => ipcRenderer.on('menu:save', callback),
   onMenuSaveAs: (callback) => ipcRenderer.on('menu:saveAs', callback),
@@ -21,6 +22,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Cleanup listeners
   removeMenuListeners: () => {
+    ipcRenderer.removeAllListeners('menu:new');
     ipcRenderer.removeAllListeners('menu:open');
     ipcRenderer.removeAllListeners('menu:save');
     ipcRenderer.removeAllListeners('menu:saveAs');

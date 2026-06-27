@@ -92,6 +92,11 @@ function buildMenu() {
       label: 'File',
       submenu: [
         {
+          label: 'New',
+          accelerator: 'CmdOrCtrl+N',
+          click: (_, win) => win?.webContents.send('menu:new'),
+        },
+        {
           label: 'Open…',
           accelerator: 'CmdOrCtrl+O',
           click: (_, win) => win?.webContents.send('menu:open'),

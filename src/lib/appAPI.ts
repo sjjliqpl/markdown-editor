@@ -30,6 +30,7 @@ declare global {
       writeFile: (filePath: string, content: string) => Promise<WriteResult>;
       saveFileAs: (defaultName: string, content: string) => Promise<SaveResult | null>;
       openExternalUrl?: (url: string) => Promise<void>;
+      onMenuNew: (cb: () => void) => void;
       onMenuOpen: (cb: () => void) => void;
       onMenuSave: (cb: () => void) => void;
       onMenuSaveAs: (cb: () => void) => void;
@@ -43,6 +44,7 @@ declare global {
 export const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 const isElectron = typeof window !== 'undefined' && 'electronAPI' in window;
 export const isDesktop = isTauri || isElectron;
+const electronAPI = isElectron ? window.electronAPI : undefined;
 
 async function listenCurrentWebviewWindow<T>(
   event: EventName,
@@ -55,14 +57,14 @@ async function listenCurrentWebviewWindow<T>(
 export const appAPI = {
   platform: isTauri
     ? (navigator.userAgent.toLowerCase().includes('mac') ? 'darwin' : 'other')
-    : (isElectron ? (window as any).electronAPI?.platform : 'other'),
+    : (electronAPI?.platform ?? 'other'),
 
   openFile: async (): Promise<FileResult | null> => {
     if (isTauri) {
       return invoke<FileResult | null>('open_file');
     }
     if (isElectron) {
-      return (window as any).electronAPI.openFile();
+      return electronAPI?.openFile() ?? null;
     }
     return null;
   },
@@ -72,7 +74,7 @@ export const appAPI = {
       return invoke<WriteResult>('write_file', { path, content });
     }
     if (isElectron) {
-      return (window as any).electronAPI.writeFile(path, content);
+      return electronAPI?.writeFile(path, content) ?? { success: false, error: 'No native API available' };
     }
     return { success: false, error: 'No native API available' };
   },
@@ -82,7 +84,7 @@ export const appAPI = {
       return invoke<SaveResult | null>('save_file_as', { defaultName, content });
     }
     if (isElectron) {
-      return (window as any).electronAPI.saveFileAs(defaultName, content);
+      return electronAPI?.saveFileAs(defaultName, content) ?? null;
     }
     return null;
   },
@@ -112,8 +114,8 @@ export const appAPI = {
       await openUrl(url);
       return;
     }
-    if (isElectron && (window as any).electronAPI.openExternalUrl) {
-      await (window as any).electronAPI.openExternalUrl(url);
+    if (isElectron && electronAPI?.openExternalUrl) {
+      await electronAPI.openExternalUrl(url);
       return;
     }
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -129,10 +131,19 @@ export const appAPI = {
 
   // ── Menu event listeners ──
 
+  onMenuNew: (callback: () => void): Promise<UnlistenFn> => {
+    if (isTauri) return listenCurrentWebviewWindow('menu:new', callback);
+    if (isElectron) {
+      electronAPI?.onMenuNew(callback);
+      return Promise.resolve(() => {});
+    }
+    return Promise.resolve(() => {});
+  },
+
   onMenuOpen: (callback: () => void): Promise<UnlistenFn> => {
     if (isTauri) return listenCurrentWebviewWindow('menu:open', callback);
     if (isElectron) {
-      (window as any).electronAPI.onMenuOpen(callback);
+      electronAPI?.onMenuOpen(callback);
       return Promise.resolve(() => {});
     }
     return Promise.resolve(() => {});
@@ -141,7 +152,7 @@ export const appAPI = {
   onMenuSave: (callback: () => void): Promise<UnlistenFn> => {
     if (isTauri) return listenCurrentWebviewWindow('menu:save', callback);
     if (isElectron) {
-      (window as any).electronAPI.onMenuSave(callback);
+      electronAPI?.onMenuSave(callback);
       return Promise.resolve(() => {});
     }
     return Promise.resolve(() => {});
@@ -150,7 +161,7 @@ export const appAPI = {
   onMenuSaveAs: (callback: () => void): Promise<UnlistenFn> => {
     if (isTauri) return listenCurrentWebviewWindow('menu:saveAs', callback);
     if (isElectron) {
-      (window as any).electronAPI.onMenuSaveAs(callback);
+      electronAPI?.onMenuSaveAs(callback);
       return Promise.resolve(() => {});
     }
     return Promise.resolve(() => {});
@@ -189,7 +200,7 @@ export const appAPI = {
   onFileOpened: (callback: (file: FileResult) => void): Promise<UnlistenFn> => {
     if (isTauri) return listenCurrentWebviewWindow<FileResult>('file:opened', (event) => callback(event.payload));
     if (isElectron) {
-      (window as any).electronAPI.onFileOpened(callback);
+      electronAPI?.onFileOpened(callback);
       return Promise.resolve(() => {});
     }
     return Promise.resolve(() => {});

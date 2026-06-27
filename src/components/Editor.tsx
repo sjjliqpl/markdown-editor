@@ -77,10 +77,19 @@ export const Editor: React.FC = () => {
     localStorage.setItem('markdown-toc-open', 'true');
   }, []);
 
-  const { fileName, fileDir, openFile, saveFile, saveFileAs } = useFileSystem(
+  const handleNewFileView = useCallback(() => {
+    startTransition(() => {
+      setViewMode('editor');
+    });
+    setShowToc(false);
+    localStorage.setItem('markdown-toc-open', 'false');
+  }, []);
+
+  const { fileName, fileDir, newFile, openFile, saveFile, saveFileAs } = useFileSystem(
     content,
     setContent,
     handleExternalOpen,
+    handleNewFileView,
   );
 
   useAutoSave(content);
@@ -334,6 +343,9 @@ export const Editor: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         saveFile();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        newFile();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
         e.preventDefault();
         openFile();
@@ -345,7 +357,7 @@ export const Editor: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [saveFile, openFile, handleExportPdfFile]);
+  }, [saveFile, newFile, openFile, handleExportPdfFile]);
 
   const showEditor = viewMode === 'split' || viewMode === 'editor';
   const showPreview = viewMode === 'split' || viewMode === 'preview';
@@ -418,6 +430,7 @@ export const Editor: React.FC = () => {
       {/* In Tauri, all controls are in native menus — no custom toolbar */}
       {!isTauri && (
         <Toolbar
+          onNewFile={newFile}
           onOpen={openFile}
           onSave={saveFile}
           onSaveAs={saveFileAs}

@@ -2,6 +2,7 @@ export type Locale = 'zh' | 'en';
 
 export interface Translation {
   appName: string;
+  newDocument: string;
   openFile: string;
   save: string;
   saveAs: string;
@@ -43,6 +44,7 @@ export interface Translation {
 
 const en: Translation = {
   appName: 'Markdown Editor',
+  newDocument: 'New Document',
   openFile: 'Open File',
   save: 'Save',
   saveAs: 'Save As...',
@@ -84,6 +86,7 @@ const en: Translation = {
 
 const zh: Translation = {
   appName: 'Markdown 编辑器',
+  newDocument: '新建文档',
   openFile: '打开文件',
   save: '保存',
   saveAs: '另存为…',
