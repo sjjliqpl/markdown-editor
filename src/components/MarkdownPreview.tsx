@@ -1,6 +1,10 @@
 import React, { forwardRef, useImperativeHandle } from 'react';
 import ReactMarkdown from 'react-markdown';
+import type { Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
+import type { Options as RehypeSanitizeOptions } from 'rehype-sanitize';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -8,16 +12,38 @@ import type { FontFamily } from '../hooks/useFontFamily';
 import { slugify } from '../hooks/useToc';
 import { appAPI } from '../lib/appAPI';
 
+type CodeProps = React.ComponentProps<'code'> & {
+  inline?: boolean;
+};
+
+type SyntaxHighlighterTheme = Record<string, React.CSSProperties>;
+
 /** Recursively extract plain text from React children */
 function extractText(children: React.ReactNode): string {
   if (typeof children === 'string') return children;
   if (typeof children === 'number') return String(children);
   if (Array.isArray(children)) return children.map(extractText).join('');
   if (React.isValidElement(children)) {
-    return extractText((children.props as any).children);
+    const props = children.props as { children?: React.ReactNode };
+    return extractText(props.children);
   }
   return '';
 }
+
+const markdownSanitizeSchema: RehypeSanitizeOptions = {
+  ...defaultSchema,
+  tagNames: Array.from(new Set([...(defaultSchema.tagNames ?? []), 'details', 'summary'])),
+  attributes: {
+    ...defaultSchema.attributes,
+    details: [...(defaultSchema.attributes?.details ?? []), 'open'],
+    img: [...(defaultSchema.attributes?.img ?? []), 'alt', 'title', 'className', 'loading'],
+  },
+  protocols: {
+    ...defaultSchema.protocols,
+    src: ['http', 'https', 'data', 'blob', 'asset', 'local-resource'],
+  },
+  strip: [...(defaultSchema.strip ?? []), 'script', 'style'],
+};
 
 export interface MarkdownPreviewHandle {
   /** Scroll the preview pane to a given percentage (0-1) without triggering React state */
@@ -37,8 +63,6 @@ const MarkdownPreviewInner: React.ForwardRefRenderFunction<MarkdownPreviewHandle
 }, ref) => {
   const previewRef = React.useRef<HTMLDivElement>(null);
   const [isDark, setIsDark] = React.useState(true);
-  // heading counter — reset on every render so IDs are stable
-  const headingIndexRef = React.useRef(0);
 
   useImperativeHandle(ref, () => ({
     scrollToPercentage: (percentage: number) => {
@@ -71,6 +95,125 @@ const MarkdownPreviewInner: React.ForwardRefRenderFunction<MarkdownPreviewHandle
       });
     }
   }, []);
+
+  let headingIndex = 0;
+  const markdownComponents: Components = {
+    h1({ children, ...props }) {
+      const text = extractText(children);
+      const id = slugify(text, headingIndex++);
+      return <h1 data-heading-id={id} id={id} {...props}>{children}</h1>;
+    },
+    h2({ children, ...props }) {
+      const text = extractText(children);
+      const id = slugify(text, headingIndex++);
+      return <h2 data-heading-id={id} id={id} {...props}>{children}</h2>;
+    },
+    h3({ children, ...props }) {
+      const text = extractText(children);
+      const id = slugify(text, headingIndex++);
+      return <h3 data-heading-id={id} id={id} {...props}>{children}</h3>;
+    },
+    a({ href, children, ...props }) {
+      const isExternal = typeof href === 'string' && /^https?:\/\//i.test(href);
+      return (
+        <a
+          href={href}
+          target={isExternal ? '_blank' : undefined}
+          rel={isExternal ? 'noopener noreferrer' : undefined}
+          onClick={(event) => handleLinkClick(event, href)}
+          {...props}
+        >
+          {children}
+        </a>
+      );
+    },
+    details({ children, ...props }) {
+      return (
+        <details
+          {...props}
+          style={{
+            margin: '1.25em 0',
+            padding: '0 16px',
+            border: '1px solid var(--border-surface)',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--bg-surface-warm)',
+            color: 'var(--text-on-surface)',
+            overflow: 'hidden',
+          }}
+        >
+          {children}
+        </details>
+      );
+    },
+    summary({ children, ...props }) {
+      return (
+        <summary
+          {...props}
+          style={{
+            margin: '0 -16px',
+            padding: '10px 16px',
+            cursor: 'pointer',
+            fontFamily: 'var(--font-ui)',
+            fontWeight: 600,
+            color: 'var(--text-on-surface)',
+            background: 'var(--bg-hover)',
+            userSelect: 'none',
+          }}
+        >
+          {children}
+        </summary>
+      );
+    },
+    code({ inline, className, children, ...props }: CodeProps) {
+      const match = /language-(\w+)/.exec(className || '');
+      return !inline && match ? (
+        <SyntaxHighlighter
+          style={(isDark ? oneDark : oneLight) as unknown as SyntaxHighlighterTheme}
+          language={match[1]}
+          PreTag="div"
+          customStyle={{
+            borderRadius: 'var(--radius-md)',
+            fontSize: '13px',
+            lineHeight: '1.6',
+            fontFamily: 'var(--font-mono)',
+            backgroundColor: isDark ? '#282c34' : '#f0f0f0',
+          }}
+          codeTagProps={{
+            style: {
+              background: isDark ? '#282c34' : '#f0f0f0',
+            },
+          }}
+        >
+          {String(children).replace(/\n$/, '')}
+        </SyntaxHighlighter>
+      ) : (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      );
+    },
+    img({ src, alt }) {
+      let resolvedSrc = src;
+      if (src && fileDir && !/^(https?:|data:|blob:)/i.test(src)) {
+        const absolutePath = src.startsWith('/')
+          ? src
+          : `${fileDir}/${src}`;
+        // Tauri uses asset:// protocol; Electron uses local-resource://
+        const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+        resolvedSrc = isTauri
+          ? `asset://localhost/${encodeURI(absolutePath.replace(/^\//, ''))}`
+          : `local-resource://${encodeURI(absolutePath)}`;
+      }
+      return (
+        <img
+          src={resolvedSrc}
+          alt={alt}
+          className="max-w-full rounded-lg"
+          loading="lazy"
+        />
+      );
+    },
+  };
 
   React.useEffect(() => {
     // Check current theme
@@ -228,89 +371,11 @@ const MarkdownPreviewInner: React.ForwardRefRenderFunction<MarkdownPreviewHandle
         `}</style>
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
-          components={{
-            // Reset counter at the start of each render
-            ...((() => { headingIndexRef.current = 0; return {}; })()),
-            h1({ children, ...props }: any) {
-              const text = extractText(children);
-              const id = slugify(text, headingIndexRef.current++);
-              return <h1 data-heading-id={id} id={id} {...props}>{children}</h1>;
-            },
-            h2({ children, ...props }: any) {
-              const text = extractText(children);
-              const id = slugify(text, headingIndexRef.current++);
-              return <h2 data-heading-id={id} id={id} {...props}>{children}</h2>;
-            },
-            h3({ children, ...props }: any) {
-              const text = extractText(children);
-              const id = slugify(text, headingIndexRef.current++);
-              return <h3 data-heading-id={id} id={id} {...props}>{children}</h3>;
-            },
-            a({ href, children, ...props }) {
-              const isExternal = typeof href === 'string' && /^https?:\/\//i.test(href);
-              return (
-                <a
-                  href={href}
-                  target={isExternal ? '_blank' : undefined}
-                  rel={isExternal ? 'noopener noreferrer' : undefined}
-                  onClick={(event) => handleLinkClick(event, href)}
-                  {...props}
-                >
-                  {children}
-                </a>
-              );
-            },
-            code({ node, inline, className, children, ...props }: any) {
-              const match = /language-(\w+)/.exec(className || '');
-              return !inline && match ? (
-                <SyntaxHighlighter
-                  style={isDark ? oneDark : oneLight}
-                  language={match[1]}
-                  PreTag="div"
-                  customStyle={{
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '13px',
-                    lineHeight: '1.6',
-                    fontFamily: 'var(--font-mono)',
-                    backgroundColor: isDark ? '#282c34' : '#f0f0f0',
-                  }}
-                  codeTagProps={{
-                    style: {
-                      background: isDark ? '#282c34' : '#f0f0f0',
-                    },
-                  }}
-                  {...props}
-                >
-                  {String(children).replace(/\n$/, '')}
-                </SyntaxHighlighter>
-              ) : (
-                <code className={className} {...props}>
-                  {children}
-                </code>
-              );
-            },
-            img({ src, alt }) {
-              let resolvedSrc = src;
-              if (src && fileDir && !/^(https?:|data:|blob:)/i.test(src)) {
-                const absolutePath = src.startsWith('/')
-                  ? src
-                  : `${fileDir}/${src}`;
-                // Tauri uses asset:// protocol; Electron uses local-resource://
-                const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
-                resolvedSrc = isTauri
-                  ? `asset://localhost/${encodeURI(absolutePath.replace(/^\//, ''))}`
-                  : `local-resource://${encodeURI(absolutePath)}`;
-              }
-              return (
-                <img
-                  src={resolvedSrc}
-                  alt={alt}
-                  className="max-w-full rounded-lg"
-                  loading="lazy"
-                />
-              );
-            },
-          }}
+          rehypePlugins={[
+            rehypeRaw,
+            [rehypeSanitize, markdownSanitizeSchema],
+          ]}
+          components={markdownComponents}
         >
           {content}
         </ReactMarkdown>
@@ -320,4 +385,3 @@ const MarkdownPreviewInner: React.ForwardRefRenderFunction<MarkdownPreviewHandle
 };
 
 export const MarkdownPreview = React.memo(forwardRef(MarkdownPreviewInner));
-
