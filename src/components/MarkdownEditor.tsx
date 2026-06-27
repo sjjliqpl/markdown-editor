@@ -41,7 +41,7 @@ const codeMirrorTheme = EditorView.theme({
   },
   '.cm-content': {
     minHeight: '100%',
-    padding: '24px 28px 24px 0',
+    padding: '12px 28px 24px 0',
     caretColor: 'var(--accent)',
   },
   '.cm-line': {
@@ -51,7 +51,7 @@ const codeMirrorTheme = EditorView.theme({
     backgroundColor: 'var(--bg-primary)',
     color: 'var(--text-muted)',
     borderRight: '1px solid var(--border-subtle)',
-    padding: '24px 6px 24px 8px',
+    padding: '0 6px 0 8px',
   },
   '.cm-activeLineGutter': {
     backgroundColor: 'var(--accent-subtle)',
@@ -152,7 +152,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     if (!view) return;
     const line = view.state.doc.line(Math.min(view.state.doc.lines, Math.max(1, lineNumber + 1)));
     view.dispatch({
-      effects: EditorView.scrollIntoView(line.from, { y: 'start', yMargin: 24 }),
+      effects: EditorView.scrollIntoView(line.from, { y: 'start', yMargin: 12 }),
     });
     view.focus();
   }, [getView]);
