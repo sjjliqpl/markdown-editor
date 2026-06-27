@@ -37,14 +37,14 @@
 | 📁 **文件操作** | 打开、保存、另存为 `.md` 文件，原生文件对话框 |
 | 🖨️ **PDF 导出** | 桌面端调用系统打印对话框（可"存储为 PDF"）；Web 端使用 jsPDF 直接导出 |
 | 🖼️ **图片导出** | 桌面端调用系统打印；Web 端使用 html2canvas 导出高清 PNG |
-| 🎨 **语法高亮** | 基于 `react-syntax-highlighter` 的代码块多语言高亮 |
+| 🎨 **CodeMirror 编辑器** | 基于 CodeMirror 6 的 Markdown 编辑区，支持行号、当前行高亮、Markdown 语法高亮和括号匹配 |
 | 📸 **图片支持** | 支持拖拽上传和粘贴图片，自动生成 Markdown 语法；桌面端本地图片通过 `asset://` 协议显示 |
 | 💾 **自动保存** | 每隔 2 秒自动将内容保存至 `localStorage`，防止内容丢失 |
 | 🌙 **主题自适应** | 自动跟随系统 `prefers-color-scheme`，无需手动切换 |
 | 🔤 **字体切换** | 支持多种正文字体（衬线体 / 无衬线体 / 等宽体）切换 |
 | 🌍 **国际化** | 中英文界面切换，所有 UI 文案完整翻译 |
 | ⌨️ **格式工具栏** | 一键插入加粗、斜体、标题、代码块、表格、链接等格式 |
-| ↩️ **撤销/重做** | 完整的编辑历史，支持多步撤销与重做 |
+| ↩️ **撤销/重做** | 基于 CodeMirror 历史栈的多步撤销与重做 |
 | 📊 **状态栏** | 实时显示词数、字符数、行数和当前视图模式 |
 | ♿ **可访问性** | 遵循无障碍设计原则，所有交互元素包含语义标签 |
 
@@ -58,8 +58,9 @@
 | **语言** | TypeScript 5（严格类型检查） |
 | **构建工具** | Vite 7 |
 | **样式** | Tailwind CSS 4 |
+| **编辑器** | CodeMirror 6 + `@uiw/react-codemirror` |
 | **Markdown 解析** | `react-markdown` + `remark-gfm` (GFM 支持) |
-| **语法高亮** | `react-syntax-highlighter` (Prism) |
+| **预览代码高亮** | `react-syntax-highlighter` (Prism) |
 | **图标** | `lucide-react` |
 | **PDF/图片导出（Web）** | `jsPDF` + `html2canvas` |
 | **桌面应用** | **Tauri 2**（推荐，~4.3 MB DMG）+ **Electron**（备用，~112 MB DMG） |
@@ -355,7 +356,7 @@ src/
 ├── components/
 │   ├── Editor.tsx          # 主编辑器容器（状态管理、布局）
 │   ├── FormatToolbar.tsx   # Markdown 格式工具栏
-│   ├── MarkdownEditor.tsx  # 左侧编辑区（textarea + 行号）
+│   ├── MarkdownEditor.tsx  # 左侧编辑区（CodeMirror 6）
 │   ├── MarkdownPreview.tsx # 右侧预览区（react-markdown 渲染）
 │   ├── TableOfContents.tsx # 目录面板
 │   └── Toolbar.tsx         # 顶部工具栏（文件、视图、主题、语言）
@@ -363,7 +364,6 @@ src/
 │   ├── useAutoSave.ts      # localStorage 自动保存
 │   ├── useFileSystem.ts    # 文件打开/保存（Tauri / File System Access API）
 │   ├── useFontFamily.ts    # 字体偏好管理
-│   ├── useHistory.ts       # 编辑历史（撤销/重做）
 │   ├── useLocale.ts        # 国际化语言切换
 │   ├── useTheme.ts         # 主题（浅色/深色/Auto）
 │   └── useToc.ts           # 目录项解析
@@ -394,4 +394,3 @@ electron/                   # Electron 后端（备用打包方案）
 ## 📝 License
 
 MIT
-

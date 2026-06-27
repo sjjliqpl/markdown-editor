@@ -1,6 +1,12 @@
-import React, { useRef, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { FormatToolbar } from './FormatToolbar';
-import { useHistory } from '../hooks/useHistory';
+import React, { useCallback, useImperativeHandle, useMemo, useRef, useState, forwardRef } from 'react';
+import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
+import { markdown } from '@codemirror/lang-markdown';
+import { EditorView, ViewUpdate, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection, dropCursor } from '@codemirror/view';
+import { EditorState, type Extension, Prec } from '@codemirror/state';
+import { bracketMatching, defaultHighlightStyle, HighlightStyle, indentOnInput, syntaxHighlighting } from '@codemirror/language';
+import { defaultKeymap, history, historyKeymap, indentWithTab, undo, redo, undoDepth, redoDepth } from '@codemirror/commands';
+import { tags as highlightTags } from '@lezer/highlight';
+import { BOLD_COMMAND, FormatToolbar, ITALIC_COMMAND, type FormatCommand } from './FormatToolbar';
 
 interface MarkdownEditorProps {
   value: string;
@@ -16,6 +22,93 @@ export interface MarkdownEditorHandle {
   scrollToLine: (lineNumber: number) => void;
 }
 
+const EDITOR_PLACEHOLDER = '# Start writing your markdown here...';
+
+const codeMirrorTheme = EditorView.theme({
+  '&': {
+    height: '100%',
+    width: '100%',
+    color: 'var(--text-primary)',
+    backgroundColor: 'transparent',
+    fontFamily: 'var(--font-mono)',
+    fontSize: '13.5px',
+  },
+  '.cm-scroller': {
+    height: '100%',
+    overflow: 'auto',
+    fontFamily: 'var(--font-mono)',
+    lineHeight: '1.7',
+  },
+  '.cm-content': {
+    minHeight: '100%',
+    padding: '24px 28px 24px 0',
+    caretColor: 'var(--accent)',
+  },
+  '.cm-line': {
+    padding: '0 2px',
+  },
+  '.cm-gutters': {
+    backgroundColor: 'var(--bg-primary)',
+    color: 'var(--text-muted)',
+    borderRight: '1px solid var(--border-subtle)',
+    padding: '24px 6px 24px 8px',
+  },
+  '.cm-activeLineGutter': {
+    backgroundColor: 'var(--accent-subtle)',
+    color: 'var(--accent)',
+  },
+  '.cm-activeLine': {
+    backgroundColor: 'var(--bg-hover)',
+  },
+  '.cm-selectionBackground, &.cm-focused .cm-selectionBackground': {
+    backgroundColor: 'var(--accent-subtle)',
+  },
+  '.cm-cursor': {
+    borderLeftColor: 'var(--accent)',
+  },
+  '.cm-matchingBracket, .cm-nonmatchingBracket': {
+    backgroundColor: 'var(--accent-subtle)',
+    outline: '1px solid var(--accent)',
+  },
+  '.cm-placeholder': {
+    color: 'var(--text-muted)',
+  },
+  '&.cm-focused': {
+    outline: 'none',
+  },
+  '.cm-foldPlaceholder': {
+    backgroundColor: 'var(--bg-hover)',
+    border: '1px solid var(--border)',
+    color: 'var(--text-secondary)',
+  },
+}, { dark: true });
+
+const markdownHighlightStyle = syntaxHighlighting(defaultHighlightStyle, { fallback: true });
+
+const markdownSyntaxTheme = syntaxHighlighting(HighlightStyle.define([
+  { tag: highlightTags.heading1, color: 'var(--accent)', fontWeight: '700', fontSize: '1.25em' },
+  { tag: highlightTags.heading2, color: 'var(--accent)', fontWeight: '700', fontSize: '1.16em' },
+  { tag: highlightTags.heading3, color: 'var(--accent)', fontWeight: '700', fontSize: '1.08em' },
+  { tag: highlightTags.heading, color: 'var(--accent)', fontWeight: '700' },
+  { tag: highlightTags.strong, color: 'var(--text-primary)', fontWeight: '700' },
+  { tag: highlightTags.emphasis, color: 'var(--text-primary)', fontStyle: 'italic' },
+  { tag: highlightTags.link, color: 'var(--accent)', textDecoration: 'underline' },
+  { tag: highlightTags.url, color: 'var(--accent-hover)' },
+  { tag: highlightTags.monospace, color: 'var(--accent)' },
+  { tag: highlightTags.quote, color: 'var(--text-secondary)', fontStyle: 'italic' },
+  { tag: highlightTags.meta, color: 'var(--text-muted)' },
+]), { fallback: true });
+
+function insertImageMarkdown(view: EditorView, markdownText: string) {
+  const selection = view.state.selection.main;
+  view.dispatch({
+    changes: { from: selection.from, to: selection.to, insert: markdownText },
+    selection: { anchor: selection.from + markdownText.length },
+    scrollIntoView: true,
+  });
+  view.focus();
+}
+
 export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
   value,
   onChange,
@@ -23,190 +116,169 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
   onImageUpload,
   onTopLineChange,
 }, ref) => {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { canUndo, canRedo, pushHistory, undo, redo } = useHistory(value);
+  const codeMirrorRef = useRef<ReactCodeMirrorRef>(null);
+  const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
 
-  // Debounce timer ref for history push
-  const historyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // RAF handle for scroll throttling
-  const scrollRafRef = useRef<number | null>(null);
+  const getView = useCallback(() => codeMirrorRef.current?.view ?? null, []);
 
-  /** Compute the line-height of the textarea by measuring a single line */
-  const getLineHeight = useCallback((): number => {
-    const textarea = textareaRef.current;
-    if (!textarea) return 22.95; // fallback: 13.5px * 1.7
-    const computed = getComputedStyle(textarea);
-    const lh = parseFloat(computed.lineHeight);
-    if (!isNaN(lh) && lh > 0) return lh;
-    // fallback: fontSize * lineHeight ratio
-    const fs = parseFloat(computed.fontSize) || 13.5;
-    return fs * 1.7;
+  const updateHistoryState = useCallback((state: EditorState) => {
+    setHistoryState((current) => {
+      const next = {
+        canUndo: undoDepth(state) > 0,
+        canRedo: redoDepth(state) > 0,
+      };
+      return current.canUndo === next.canUndo && current.canRedo === next.canRedo ? current : next;
+    });
   }, []);
 
-  /** Scroll the textarea so the given 0-based line number is at the top */
+  const reportScrollPosition = useCallback((view: EditorView) => {
+    const { scrollTop, scrollHeight, clientHeight } = view.scrollDOM;
+
+    if (onScroll && scrollHeight - clientHeight > 0) {
+      onScroll(scrollTop / (scrollHeight - clientHeight));
+    }
+
+    if (onTopLineChange) {
+      const pos = view.posAtCoords({
+        x: view.contentDOM.getBoundingClientRect().left + 1,
+        y: view.scrollDOM.getBoundingClientRect().top + 1,
+      }) ?? 0;
+      onTopLineChange(Math.max(0, view.state.doc.lineAt(pos).number - 1));
+    }
+  }, [onScroll, onTopLineChange]);
+
   const scrollToLine = useCallback((lineNumber: number) => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    const lineH = getLineHeight();
-    const paddingTop = parseFloat(getComputedStyle(textarea).paddingTop) || 24;
-    const targetScrollTop = lineNumber * lineH - paddingTop;
-    textarea.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
-  }, [getLineHeight]);
+    const view = getView();
+    if (!view) return;
+    const line = view.state.doc.line(Math.min(view.state.doc.lines, Math.max(1, lineNumber + 1)));
+    view.dispatch({
+      effects: EditorView.scrollIntoView(line.from, { y: 'start', yMargin: 24 }),
+    });
+    view.focus();
+  }, [getView]);
 
   useImperativeHandle(ref, () => ({ scrollToLine }), [scrollToLine]);
 
-  const handleScroll = useCallback(() => {
-    if (scrollRafRef.current !== null) return; // already scheduled
-    scrollRafRef.current = requestAnimationFrame(() => {
-      scrollRafRef.current = null;
-      const textarea = textareaRef.current;
-      if (!textarea) return;
+  const applyCommand = useCallback((command: FormatCommand) => {
+    const view = getView();
+    if (!view) return;
+    const selection = view.state.selection.main;
+    const commandRange = {
+      from: selection.from,
+      to: selection.to,
+    };
+    let selectedText = view.state.doc.sliceString(selection.from, selection.to);
+    const preview = command(selectedText);
 
-      const { scrollTop, scrollHeight, clientHeight } = textarea;
-
-      // Report scroll percentage for preview sync
-      if (onScroll && scrollHeight - clientHeight > 0) {
-        const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
-        onScroll(scrollPercentage);
-      }
-
-      // Report the top visible line number to parent
-      if (onTopLineChange) {
-        const lineH = getLineHeight();
-        const paddingTop = parseFloat(getComputedStyle(textarea).paddingTop) || 24;
-        const topLine = Math.floor((scrollTop + paddingTop) / lineH);
-        onTopLineChange(Math.max(0, topLine));
-      }
-    });
-  }, [onScroll, onTopLineChange, getLineHeight]);
-
-  const handleDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    const files = e.dataTransfer.files;
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file.type.startsWith('image/')) {
-        const url = URL.createObjectURL(file);
-        const imageMarkdown = `\n![${file.name}](${url})\n`;
-        const textarea = textareaRef.current;
-        if (textarea) {
-          const start = textarea.selectionStart;
-          const end = textarea.selectionEnd;
-          const newContent = value.substring(0, start) + imageMarkdown + value.substring(end);
-          onChange(newContent);
-          pushHistory(newContent, start + imageMarkdown.length, start + imageMarkdown.length);
-        }
-        if (onImageUpload) onImageUpload(file);
-      }
+    if (preview.lineMode) {
+      const fromLine = view.state.doc.lineAt(selection.from);
+      const toLine = view.state.doc.lineAt(selection.to);
+      commandRange.from = fromLine.from;
+      commandRange.to = toLine.to;
+      selectedText = view.state.doc.sliceString(commandRange.from, commandRange.to);
     }
-  };
 
-  const handleDragOver = (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-  };
+    const { insert, anchor, head } = command(selectedText);
+    const anchorPos = commandRange.from + anchor;
+    const headPos = commandRange.from + head;
 
-  // Called by textarea onChange — debounce history push
-  const handleChange = useCallback(
-    (newValue: string) => {
-      onChange(newValue);
-      if (historyTimer.current) clearTimeout(historyTimer.current);
-      historyTimer.current = setTimeout(() => {
-        const textarea = textareaRef.current;
-        pushHistory(newValue, textarea?.selectionStart ?? 0, textarea?.selectionEnd ?? 0);
-      }, 500);
-    },
-    [onChange, pushHistory]
-  );
+    view.dispatch({
+      changes: { from: commandRange.from, to: commandRange.to, insert },
+      selection: { anchor: anchorPos, head: headPos },
+      scrollIntoView: true,
+    });
+    view.focus();
+    updateHistoryState(view.state);
+  }, [getView, updateHistoryState]);
 
   const handleUndo = useCallback(() => {
-    const state = undo();
-    if (!state) return;
-    onChange(state.value);
-    requestAnimationFrame(() => {
-      textareaRef.current?.focus();
-      textareaRef.current?.setSelectionRange(state.selStart, state.selEnd);
-    });
-  }, [undo, onChange]);
+    const view = getView();
+    if (!view) return;
+    undo(view);
+    updateHistoryState(view.state);
+    view.focus();
+  }, [getView, updateHistoryState]);
 
   const handleRedo = useCallback(() => {
-    const state = redo();
-    if (!state) return;
-    onChange(state.value);
-    requestAnimationFrame(() => {
-      textareaRef.current?.focus();
-      textareaRef.current?.setSelectionRange(state.selStart, state.selEnd);
-    });
-  }, [redo, onChange]);
+    const view = getView();
+    if (!view) return;
+    redo(view);
+    updateHistoryState(view.state);
+    view.focus();
+  }, [getView, updateHistoryState]);
 
-  // Push history immediately after format-toolbar actions (value changes from outside)
-  const prevValueRef = useRef(value);
-  useEffect(() => {
-    if (prevValueRef.current !== value) {
-      prevValueRef.current = value;
-      // Format toolbar already called pushHistory via applyFormat; skip debounce
+  const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    const view = getView();
+    if (!view) return;
+
+    const images = Array.from(event.dataTransfer.files).filter((file) => file.type.startsWith('image/'));
+    if (images.length === 0) return;
+
+    event.preventDefault();
+    const markdownText = images
+      .map((file) => {
+        if (onImageUpload) onImageUpload(file);
+        return `\n![${file.name}](${URL.createObjectURL(file)})\n`;
+      })
+      .join('');
+    insertImageMarkdown(view, markdownText);
+  }, [getView, onImageUpload]);
+
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (Array.from(event.dataTransfer.items).some((item) => item.type.startsWith('image/'))) {
+      event.preventDefault();
     }
-  }, [value]);
-
-  // Handle Tab key for indent + Cmd/Ctrl+Z/Y shortcuts
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const mod = e.metaKey || e.ctrlKey;
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const textarea = textareaRef.current;
-      if (textarea) {
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const newContent = value.substring(0, start) + '  ' + value.substring(end);
-        onChange(newContent);
-        pushHistory(newContent, start + 2, start + 2);
-        requestAnimationFrame(() => {
-          textarea.selectionStart = textarea.selectionEnd = start + 2;
-        });
-      }
-    } else if (mod && e.key === 'z' && !e.shiftKey) {
-      e.preventDefault();
-      handleUndo();
-    } else if (mod && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-      e.preventDefault();
-      handleRedo();
-    } else if (mod && e.key === 'b') {
-      e.preventDefault();
-      const textarea = textareaRef.current;
-      if (textarea) {
-        const s = textarea.selectionStart;
-        const en = textarea.selectionEnd;
-        const selected = value.substring(s, en) || 'bold text';
-        const newValue = value.substring(0, s) + '**' + selected + '**' + value.substring(en);
-        onChange(newValue);
-        pushHistory(newValue, s + 2, s + 2 + selected.length);
-        requestAnimationFrame(() => {
-          textarea.setSelectionRange(s + 2, s + 2 + selected.length);
-        });
-      }
-    } else if (mod && e.key === 'i') {
-      e.preventDefault();
-      const textarea = textareaRef.current;
-      if (textarea) {
-        const s = textarea.selectionStart;
-        const en = textarea.selectionEnd;
-        const selected = value.substring(s, en) || 'italic text';
-        const newValue = value.substring(0, s) + '*' + selected + '*' + value.substring(en);
-        onChange(newValue);
-        pushHistory(newValue, s + 1, s + 1 + selected.length);
-        requestAnimationFrame(() => {
-          textarea.setSelectionRange(s + 1, s + 1 + selected.length);
-        });
-      }
-    }
-  };
-
-  // Cleanup debounce on unmount
-  useEffect(() => {
-    return () => {
-      if (historyTimer.current) clearTimeout(historyTimer.current);
-      if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current);
-    };
   }, []);
+
+  const extensions = useMemo<Extension[]>(() => {
+    const runCommand = (view: EditorView, command: FormatCommand) => {
+      const selection = view.state.selection.main;
+      const selectedText = view.state.doc.sliceString(selection.from, selection.to);
+      const { insert, anchor, head } = command(selectedText);
+      view.dispatch({
+        changes: { from: selection.from, to: selection.to, insert },
+        selection: {
+          anchor: selection.from + anchor,
+          head: selection.from + head,
+        },
+        scrollIntoView: true,
+      });
+      return true;
+    };
+
+    return [
+      lineNumbers(),
+      highlightActiveLineGutter(),
+      highlightActiveLine(),
+      drawSelection(),
+      dropCursor(),
+      history(),
+      indentOnInput(),
+      bracketMatching(),
+      markdown(),
+      markdownHighlightStyle,
+      markdownSyntaxTheme,
+      EditorState.tabSize.of(2),
+      EditorView.lineWrapping,
+      EditorView.updateListener.of((update: ViewUpdate) => {
+        updateHistoryState(update.state);
+        if (update.docChanged || update.viewportChanged) {
+          reportScrollPosition(update.view);
+        }
+      }),
+      EditorView.domEventHandlers({
+        scroll: (_event, view) => {
+          reportScrollPosition(view);
+        },
+      }),
+      Prec.highest(keymap.of([
+        indentWithTab,
+        { key: 'Mod-b', run: (view) => runCommand(view, BOLD_COMMAND) },
+        { key: 'Mod-i', run: (view) => runCommand(view, ITALIC_COMMAND) },
+      ])),
+      keymap.of([...defaultKeymap, ...historyKeymap]),
+    ];
+  }, [reportScrollPosition, updateHistoryState]);
 
   return (
     <div style={{
@@ -216,42 +288,36 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       background: 'var(--bg-primary)',
     }}>
       <FormatToolbar
-        textareaRef={textareaRef}
-        value={value}
-        onChange={onChange}
-        canUndo={canUndo}
-        canRedo={canRedo}
+        canUndo={historyState.canUndo}
+        canRedo={historyState.canRedo}
         onUndo={handleUndo}
         onRedo={handleRedo}
-        pushHistory={pushHistory}
+        onApply={applyCommand}
       />
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={(e) => handleChange(e.target.value)}
-        onScroll={handleScroll}
+      <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
-        onKeyDown={handleKeyDown}
-        spellCheck={false}
-        placeholder="# Start writing your markdown here..."
         style={{
           flex: 1,
-          width: '100%',
-          padding: '24px 28px',
-          fontFamily: 'var(--font-mono)',
-          fontSize: '13.5px',
-          lineHeight: '1.7',
-          color: 'var(--text-primary)',
-          background: 'transparent',
-          border: 'none',
-          resize: 'none',
-          outline: 'none',
-          caretColor: 'var(--accent)',
-          tabSize: 2,
-          letterSpacing: '0.01em',
+          minHeight: 0,
+          overflow: 'hidden',
         }}
-      />
+      >
+        <CodeMirror
+          ref={codeMirrorRef}
+          value={value}
+          height="100%"
+          width="100%"
+          theme={codeMirrorTheme}
+          basicSetup={false}
+          extensions={extensions}
+          placeholder={EDITOR_PLACEHOLDER}
+          onChange={onChange}
+          onCreateEditor={(view) => {
+            updateHistoryState(view.state);
+          }}
+        />
+      </div>
     </div>
   );
 });

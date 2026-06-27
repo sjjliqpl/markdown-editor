@@ -21,64 +21,54 @@ import {
   Redo2,
 } from 'lucide-react';
 
+export interface FormatCommandResult {
+  insert: string;
+  anchor: number;
+  head: number;
+  lineMode?: boolean;
+}
+
+export type FormatCommand = (selectedText: string) => FormatCommandResult;
+
 interface FormatAction {
   icon: React.ReactNode;
   label: string;
   shortcut?: string;
-  action: (value: string, selStart: number, selEnd: number) => { newValue: string; newSelStart: number; newSelEnd: number };
+  command: FormatCommand;
   dividerBefore?: boolean;
 }
 
 interface FormatToolbarProps {
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
-  value: string;
-  onChange: (value: string) => void;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
-  pushHistory: (value: string, selStart: number, selEnd: number) => void;
+  onApply: (command: FormatCommand) => void;
 }
 
-// Wrap selection or insert placeholder
-function wrapOrInsert(
-  value: string,
-  selStart: number,
-  selEnd: number,
-  before: string,
-  after: string,
-  placeholder: string
-) {
-  const selected = value.substring(selStart, selEnd);
-  const text = selected || placeholder;
-  const newValue = value.substring(0, selStart) + before + text + after + value.substring(selEnd);
-  const newStart = selStart + before.length;
-  const newEnd = newStart + text.length;
-  return { newValue, newSelStart: newStart, newSelEnd: newEnd };
+function commandResult(insert: string, anchor: number, head = anchor, lineMode = false): FormatCommandResult {
+  return { insert, anchor, head, lineMode };
 }
 
-// Insert at start of each selected line
-function toggleLinePrefix(
-  value: string,
-  selStart: number,
-  selEnd: number,
-  prefix: string
-) {
-  const before = value.substring(0, selStart);
-  const lineStart = before.lastIndexOf('\n') + 1;
-  const chunk = value.substring(lineStart, selEnd);
-  const lines = chunk.split('\n');
-  const alreadyPrefixed = lines.every(l => l.startsWith(prefix));
-  const newLines = alreadyPrefixed
-    ? lines.map(l => l.slice(prefix.length))
-    : lines.map(l => prefix + l);
-  const newChunk = newLines.join('\n');
-  const newValue = value.substring(0, lineStart) + newChunk + value.substring(selEnd);
-  const delta = newChunk.length - chunk.length;
-  return {
-    newValue,
-    newSelStart: lineStart,
-    newSelEnd: selEnd + delta,
+function wrapOrInsert(before: string, after: string, placeholder: string): FormatCommand {
+  return (selectedText) => {
+    const text = selectedText || placeholder;
+    return commandResult(`${before}${text}${after}`, before.length, before.length + text.length);
+  };
+}
+
+export const BOLD_COMMAND = wrapOrInsert('**', '**', 'bold text');
+export const ITALIC_COMMAND = wrapOrInsert('*', '*', 'italic text');
+
+function toggleLinePrefix(prefix: string): FormatCommand {
+  return (selectedText) => {
+    const text = selectedText || '';
+    const lines = text.split('\n');
+    const alreadyPrefixed = lines.length > 0 && lines.every((line) => line.startsWith(prefix));
+    const formatted = alreadyPrefixed
+      ? lines.map((line) => line.slice(prefix.length)).join('\n')
+      : lines.map((line) => prefix + line).join('\n');
+    return commandResult(formatted, 0, formatted.length, true);
   };
 }
 
@@ -87,160 +77,129 @@ const FORMAT_ACTIONS: FormatAction[] = [
     icon: <Bold size={14} />,
     label: 'Bold',
     shortcut: '⌘B',
-    action: (v, s, e) => wrapOrInsert(v, s, e, '**', '**', 'bold text'),
+    command: BOLD_COMMAND,
   },
   {
     icon: <Italic size={14} />,
     label: 'Italic',
     shortcut: '⌘I',
-    action: (v, s, e) => wrapOrInsert(v, s, e, '*', '*', 'italic text'),
+    command: ITALIC_COMMAND,
   },
   {
     icon: <Strikethrough size={14} />,
     label: 'Strikethrough',
-    action: (v, s, e) => wrapOrInsert(v, s, e, '~~', '~~', 'strikethrough'),
+    command: wrapOrInsert('~~', '~~', 'strikethrough'),
   },
   {
     icon: <Heading1 size={14} />,
     label: 'Heading 1',
     dividerBefore: true,
-    action: (v, s, e) => toggleLinePrefix(v, s, e, '# '),
+    command: toggleLinePrefix('# '),
   },
   {
     icon: <Heading2 size={14} />,
     label: 'Heading 2',
-    action: (v, s, e) => toggleLinePrefix(v, s, e, '## '),
+    command: toggleLinePrefix('## '),
   },
   {
     icon: <Heading3 size={14} />,
     label: 'Heading 3',
-    action: (v, s, e) => toggleLinePrefix(v, s, e, '### '),
+    command: toggleLinePrefix('### '),
   },
   {
     icon: <Quote size={14} />,
     label: 'Blockquote',
     dividerBefore: true,
-    action: (v, s, e) => toggleLinePrefix(v, s, e, '> '),
+    command: toggleLinePrefix('> '),
   },
   {
     icon: <Code size={14} />,
     label: 'Inline Code',
-    action: (v, s, e) => wrapOrInsert(v, s, e, '`', '`', 'code'),
+    command: wrapOrInsert('`', '`', 'code'),
   },
   {
     icon: <Code2 size={14} />,
     label: 'Code Block',
-    action: (v, s, e) => {
-      const selected = v.substring(s, e);
-      const text = selected || 'code here';
-      const newText = '\n```\n' + text + '\n```\n';
-      const newValue = v.substring(0, s) + newText + v.substring(e);
-      const newStart = s + 5;
-      return { newValue, newSelStart: newStart, newSelEnd: newStart + text.length };
+    command: (selectedText) => {
+      const text = selectedText || 'code here';
+      const insert = `\n\`\`\`\n${text}\n\`\`\`\n`;
+      return commandResult(insert, 5, 5 + text.length);
     },
   },
   {
     icon: <List size={14} />,
     label: 'Bullet List',
     dividerBefore: true,
-    action: (v, s, e) => toggleLinePrefix(v, s, e, '- '),
+    command: toggleLinePrefix('- '),
   },
   {
     icon: <ListOrdered size={14} />,
     label: 'Ordered List',
-    action: (v, s, e) => toggleLinePrefix(v, s, e, '1. '),
+    command: toggleLinePrefix('1. '),
   },
   {
     icon: <CheckSquare size={14} />,
     label: 'Task List',
-    action: (v, s, e) => toggleLinePrefix(v, s, e, '- [ ] '),
+    command: toggleLinePrefix('- [ ] '),
   },
   {
     icon: <Link size={14} />,
     label: 'Link',
     dividerBefore: true,
-    action: (v, s, e) => {
-      const selected = v.substring(s, e);
-      const text = selected || 'link text';
-      const newText = `[${text}](url)`;
-      const newValue = v.substring(0, s) + newText + v.substring(e);
-      return { newValue, newSelStart: s + text.length + 3, newSelEnd: s + text.length + 3 + 3 };
+    command: (selectedText) => {
+      const text = selectedText || 'link text';
+      const insert = `[${text}](url)`;
+      const urlStart = text.length + 3;
+      return commandResult(insert, urlStart, urlStart + 3);
     },
   },
   {
     icon: <Image size={14} />,
     label: 'Image',
-    action: (v, s, e) => {
-      const selected = v.substring(s, e);
-      const alt = selected || 'alt text';
-      const newText = `![${alt}](url)`;
-      const newValue = v.substring(0, s) + newText + v.substring(e);
-      return { newValue, newSelStart: s + alt.length + 4, newSelEnd: s + alt.length + 4 + 3 };
+    command: (selectedText) => {
+      const alt = selectedText || 'alt text';
+      const insert = `![${alt}](url)`;
+      const urlStart = alt.length + 4;
+      return commandResult(insert, urlStart, urlStart + 3);
     },
   },
   {
     icon: <Table size={14} />,
     label: 'Table',
-    action: (v, s, _e) => {
-      const tableText = '\n| Header 1 | Header 2 | Header 3 |\n| -------- | -------- | -------- |\n| Cell 1   | Cell 2   | Cell 3   |\n';
-      const newValue = v.substring(0, s) + tableText + v.substring(s);
-      const newSel = s + tableText.length;
-      return { newValue, newSelStart: newSel, newSelEnd: newSel };
+    command: () => {
+      const insert = '\n| Header 1 | Header 2 | Header 3 |\n| -------- | -------- | -------- |\n| Cell 1   | Cell 2   | Cell 3   |\n';
+      return commandResult(insert, insert.length);
     },
   },
   {
     icon: <Minus size={14} />,
     label: 'Horizontal Rule',
     dividerBefore: true,
-    action: (v, s, _e) => {
-      const hr = '\n---\n';
-      const newValue = v.substring(0, s) + hr + v.substring(s);
-      const newSel = s + hr.length;
-      return { newValue, newSelStart: newSel, newSelEnd: newSel };
+    command: () => {
+      const insert = '\n---\n';
+      return commandResult(insert, insert.length);
     },
   },
   {
     icon: <CornerDownLeft size={14} />,
     label: 'Line Break',
-    action: (v, s, _e) => {
-      const br = '  \n';
-      const newValue = v.substring(0, s) + br + v.substring(s);
-      const newSel = s + br.length;
-      return { newValue, newSelStart: newSel, newSelEnd: newSel };
+    command: () => {
+      const insert = ' '.repeat(2) + '\n';
+      return commandResult(insert, insert.length);
     },
   },
 ];
 
 export const FormatToolbar: React.FC<FormatToolbarProps> = ({
-  textareaRef,
-  value,
-  onChange,
   canUndo,
   canRedo,
   onUndo,
   onRedo,
-  pushHistory,
+  onApply,
 }) => {
-  const applyFormat = useCallback(
-    (action: FormatAction) => {
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-
-      const selStart = textarea.selectionStart;
-      const selEnd = textarea.selectionEnd;
-      const { newValue, newSelStart, newSelEnd } = action.action(value, selStart, selEnd);
-
-      onChange(newValue);
-      pushHistory(newValue, newSelStart, newSelEnd);
-
-      // Restore focus and selection after React re-render
-      requestAnimationFrame(() => {
-        textarea.focus();
-        textarea.setSelectionRange(newSelStart, newSelEnd);
-      });
-    },
-    [textareaRef, value, onChange, pushHistory]
-  );
+  const applyFormat = useCallback((action: FormatAction) => {
+    onApply(action.command);
+  }, [onApply]);
 
   return (
     <div
@@ -256,23 +215,21 @@ export const FormatToolbar: React.FC<FormatToolbarProps> = ({
         minHeight: '36px',
       }}
     >
-      {/* Undo / Redo */}
       <IconButton
         icon={<Undo2 size={14} />}
         label="Undo"
         shortcut="⌘Z"
         disabled={!canUndo}
-        onMouseDown={(e) => { e.preventDefault(); onUndo(); }}
+        onMouseDown={(event) => { event.preventDefault(); onUndo(); }}
       />
       <IconButton
         icon={<Redo2 size={14} />}
         label="Redo"
         shortcut="⌘⇧Z"
         disabled={!canRedo}
-        onMouseDown={(e) => { e.preventDefault(); onRedo(); }}
+        onMouseDown={(event) => { event.preventDefault(); onRedo(); }}
       />
 
-      {/* Divider */}
       <div style={{ width: '1px', height: '18px', background: 'var(--border)', margin: '0 4px', flexShrink: 0 }} />
 
       {FORMAT_ACTIONS.map((action, index) => (
@@ -299,9 +256,8 @@ const FormatButton: React.FC<{
 }> = ({ action, onApply }) => {
   return (
     <button
-      onMouseDown={(e) => {
-        // Prevent textarea from losing focus
-        e.preventDefault();
+      onMouseDown={(event) => {
+        event.preventDefault();
         onApply();
       }}
       title={action.shortcut ? `${action.label} (${action.shortcut})` : action.label}
@@ -319,13 +275,13 @@ const FormatButton: React.FC<{
         flexShrink: 0,
         transition: 'background 0.1s, color 0.1s',
       }}
-      onMouseEnter={e => {
-        e.currentTarget.style.background = 'var(--bg-hover)';
-        e.currentTarget.style.color = 'var(--text-primary)';
+      onMouseEnter={(event) => {
+        event.currentTarget.style.background = 'var(--bg-hover)';
+        event.currentTarget.style.color = 'var(--text-primary)';
       }}
-      onMouseLeave={e => {
-        e.currentTarget.style.background = 'transparent';
-        e.currentTarget.style.color = 'var(--text-secondary)';
+      onMouseLeave={(event) => {
+        event.currentTarget.style.background = 'transparent';
+        event.currentTarget.style.color = 'var(--text-secondary)';
       }}
     >
       {action.icon}
@@ -338,7 +294,7 @@ const IconButton: React.FC<{
   label: string;
   shortcut?: string;
   disabled?: boolean;
-  onMouseDown: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onMouseDown: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }> = ({ icon, label, shortcut, disabled, onMouseDown }) => (
   <button
     onMouseDown={onMouseDown}
@@ -359,15 +315,15 @@ const IconButton: React.FC<{
       opacity: disabled ? 0.4 : 1,
       transition: 'background 0.1s, color 0.1s, opacity 0.1s',
     }}
-    onMouseEnter={e => {
+    onMouseEnter={(event) => {
       if (!disabled) {
-        e.currentTarget.style.background = 'var(--bg-hover)';
-        e.currentTarget.style.color = 'var(--text-primary)';
+        event.currentTarget.style.background = 'var(--bg-hover)';
+        event.currentTarget.style.color = 'var(--text-primary)';
       }
     }}
-    onMouseLeave={e => {
-      e.currentTarget.style.background = 'transparent';
-      e.currentTarget.style.color = disabled ? 'var(--text-muted)' : 'var(--text-secondary)';
+    onMouseLeave={(event) => {
+      event.currentTarget.style.background = 'transparent';
+      event.currentTarget.style.color = disabled ? 'var(--text-muted)' : 'var(--text-secondary)';
     }}
   >
     {icon}
