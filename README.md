@@ -1,6 +1,6 @@
 # Markdown Editor
 
-一个极简、高性能的 Markdown 编辑器，支持实时预览、多主题切换、目录导航、图片处理和 PDF 导出。
+一个极简、高性能的 Markdown 编辑器，支持实时预览、目录导航、图片处理和 PDF 导出。
 
 ![版本](https://img.shields.io/github/v/release/sjjliqpl/markdown-editor?label=最新版本&color=blue)
 ![平台](https://img.shields.io/badge/平台-macOS%20Apple%20Silicon-lightgrey?logo=apple)
@@ -37,7 +37,7 @@
 | 📁 **文件操作** | 打开、保存、另存为 `.md` 文件，原生文件对话框 |
 | 🖨️ **PDF 导出** | 桌面端调用系统打印对话框（可"存储为 PDF"）；Web 端使用 jsPDF 直接导出 |
 | 🖼️ **图片导出** | 桌面端调用系统打印；Web 端使用 html2canvas 导出高清 PNG |
-| 🎨 **CodeMirror 编辑器** | 基于 CodeMirror 6 的 Markdown 编辑区，支持行号、当前行高亮、Markdown 语法高亮和括号匹配 |
+| 🎨 **CodeMirror 编辑器** | 基于 CodeMirror 6 的 Markdown 编辑区，支持行号、文本选区高亮、Markdown 语法高亮和括号匹配 |
 | 📸 **图片支持** | 支持拖拽上传和粘贴图片，自动生成 Markdown 语法；桌面端本地图片通过 `asset://` 协议显示 |
 | 💾 **自动保存** | 每隔 2 秒自动将内容保存至 `localStorage`，防止内容丢失 |
 | 🌙 **主题自适应** | 自动跟随系统 `prefers-color-scheme`，无需手动切换 |
@@ -115,7 +115,7 @@ src-tauri/target/aarch64-apple-darwin/release/bundle/
 ├── macos/
 │   └── Markdown Editor.app           # 应用程序包
 └── dmg/
-    └── Markdown Editor_1.0.0_aarch64.dmg  # macOS 安装镜像（~4.3 MB）
+    └── Markdown Editor_1.0.1_aarch64.dmg  # macOS 安装镜像（~4.3 MB）
 ```
 
 ### 桌面应用开发模式（Electron）
