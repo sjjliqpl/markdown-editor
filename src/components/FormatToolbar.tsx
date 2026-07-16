@@ -19,7 +19,9 @@ import {
   CornerDownLeft,
   Undo2,
   Redo2,
+  Search,
 } from 'lucide-react';
+import type { Locale } from '../i18n';
 
 export interface FormatCommandResult {
   insert: string;
@@ -44,6 +46,8 @@ interface FormatToolbarProps {
   onUndo: () => void;
   onRedo: () => void;
   onApply: (command: FormatCommand) => void;
+  onFind: () => void;
+  locale: Locale;
 }
 
 function commandResult(insert: string, anchor: number, head = anchor, lineMode = false): FormatCommandResult {
@@ -196,6 +200,8 @@ export const FormatToolbar: React.FC<FormatToolbarProps> = ({
   onUndo,
   onRedo,
   onApply,
+  onFind,
+  locale,
 }) => {
   const applyFormat = useCallback((action: FormatAction) => {
     onApply(action.command);
@@ -228,6 +234,12 @@ export const FormatToolbar: React.FC<FormatToolbarProps> = ({
         shortcut="⌘⇧Z"
         disabled={!canRedo}
         onMouseDown={(event) => { event.preventDefault(); onRedo(); }}
+      />
+      <IconButton
+        icon={<Search size={14} />}
+        label={locale === 'zh' ? '查找' : 'Find'}
+        shortcut="⌘F"
+        onMouseDown={(event) => { event.preventDefault(); onFind(); }}
       />
 
       <div style={{ width: '1px', height: '18px', background: 'var(--border)', margin: '0 4px', flexShrink: 0 }} />

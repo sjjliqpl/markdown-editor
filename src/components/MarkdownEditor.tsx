@@ -1,12 +1,16 @@
-import React, { useCallback, useImperativeHandle, useMemo, useRef, useState, forwardRef } from 'react';
+import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef } from 'react';
 import CodeMirror, { type ReactCodeMirrorRef } from '@uiw/react-codemirror';
 import { markdown } from '@codemirror/lang-markdown';
 import { EditorView, ViewUpdate, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection, dropCursor } from '@codemirror/view';
 import { EditorState, type Extension, Prec } from '@codemirror/state';
 import { bracketMatching, defaultHighlightStyle, HighlightStyle, indentOnInput, syntaxHighlighting } from '@codemirror/language';
 import { defaultKeymap, history, historyKeymap, indentWithTab, undo, redo, undoDepth, redoDepth } from '@codemirror/commands';
+import { findNext, findPrevious, openSearchPanel, search, searchKeymap } from '@codemirror/search';
 import { tags as highlightTags } from '@lezer/highlight';
 import { BOLD_COMMAND, FormatToolbar, ITALIC_COMMAND, type FormatCommand } from './FormatToolbar';
+import { createSearchPanel, showReplaceControls, updateSearchPanelLocale } from './SearchPanel';
+import type { Locale } from '../i18n';
+import { isTauri } from '../lib/appAPI';
 
 interface MarkdownEditorProps {
   value: string;
@@ -15,11 +19,16 @@ interface MarkdownEditorProps {
   onImageUpload?: (file: File) => void;
   /** Called when the topmost visible line in the editor changes */
   onTopLineChange?: (lineNumber: number) => void;
+  locale: Locale;
+  onReady?: () => void;
 }
+
+export type SearchAction = 'find' | 'replace' | 'next' | 'previous';
 
 export interface MarkdownEditorHandle {
   /** Scroll the editor so that the given 0-based line number is at the top */
   scrollToLine: (lineNumber: number) => void;
+  runSearchAction: (action: SearchAction) => void;
 }
 
 const EDITOR_PLACEHOLDER = '# Start writing your markdown here...';
@@ -84,6 +93,89 @@ const codeMirrorTheme = EditorView.theme({
     border: '1px solid var(--border)',
     color: 'var(--text-secondary)',
   },
+  '.cm-panels': {
+    background: 'var(--bg-secondary)',
+    color: 'var(--text-primary)',
+  },
+  '.cm-search-panel': {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    padding: '8px 10px',
+    borderBottom: '1px solid var(--border)',
+    fontFamily: 'var(--font-ui)',
+  },
+  '.cm-search-row': {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  '.cm-search-replace-row[hidden]': {
+    display: 'none',
+  },
+  '.cm-search-input': {
+    minWidth: '120px',
+    flex: '1 1 220px',
+    height: '28px',
+    padding: '0 9px',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-sm)',
+    background: 'var(--bg-primary)',
+    color: 'var(--text-primary)',
+    outline: 'none',
+  },
+  '.cm-search-input:focus': {
+    borderColor: 'var(--accent)',
+    boxShadow: '0 0 0 2px var(--accent-subtle)',
+  },
+  '.cm-search-status': {
+    minWidth: '48px',
+    color: 'var(--text-muted)',
+    fontSize: '11px',
+    textAlign: 'center',
+    whiteSpace: 'nowrap',
+  },
+  '.cm-search-status.is-error': {
+    minWidth: '120px',
+    color: '#ef4444',
+  },
+  '.cm-search-button': {
+    height: '28px',
+    padding: '0 9px',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-sm)',
+    background: 'var(--bg-elevated)',
+    color: 'var(--text-secondary)',
+    cursor: 'pointer',
+    fontFamily: 'var(--font-ui)',
+    whiteSpace: 'nowrap',
+  },
+  '.cm-search-button:hover': {
+    background: 'var(--bg-hover)',
+    color: 'var(--text-primary)',
+  },
+  '.cm-search-icon-button, .cm-search-option': {
+    minWidth: '28px',
+    padding: '0 6px',
+  },
+  '.cm-search-option[aria-pressed=true]': {
+    borderColor: 'var(--accent)',
+    background: 'var(--accent-subtle)',
+    color: 'var(--accent)',
+  },
+  '.cm-search-close': {
+    marginLeft: 'auto',
+    fontSize: '18px',
+  },
+  '.cm-searchMatch': {
+    backgroundColor: 'rgba(226, 163, 54, 0.28)',
+    outline: '1px solid rgba(226, 163, 54, 0.55)',
+    borderRadius: '2px',
+  },
+  '.cm-searchMatch.cm-searchMatch-selected': {
+    backgroundColor: 'rgba(96, 165, 250, 0.42)',
+    outline: '2px solid #60a5fa',
+  },
 }, { dark: true });
 
 const markdownHighlightStyle = syntaxHighlighting(defaultHighlightStyle, { fallback: true });
@@ -118,11 +210,18 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
   onScroll,
   onImageUpload,
   onTopLineChange,
+  locale,
+  onReady,
 }, ref) => {
   const codeMirrorRef = useRef<ReactCodeMirrorRef>(null);
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
 
   const getView = useCallback(() => codeMirrorRef.current?.view ?? null, []);
+
+  useEffect(() => {
+    const view = getView();
+    if (view) updateSearchPanelLocale(view, locale);
+  }, [getView, locale]);
 
   const updateHistoryState = useCallback((state: EditorState) => {
     setHistoryState((current) => {
@@ -160,7 +259,20 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     view.focus();
   }, [getView]);
 
-  useImperativeHandle(ref, () => ({ scrollToLine }), [scrollToLine]);
+  const runSearchAction = useCallback((action: SearchAction) => {
+    const view = getView();
+    if (!view) return;
+    if (action === 'next') {
+      findNext(view);
+    } else if (action === 'previous') {
+      findPrevious(view);
+    } else {
+      openSearchPanel(view);
+      showReplaceControls(view, action === 'replace');
+    }
+  }, [getView]);
+
+  useImperativeHandle(ref, () => ({ scrollToLine, runSearchAction }), [runSearchAction, scrollToLine]);
 
   const applyCommand = useCallback((command: FormatCommand) => {
     const view = getView();
@@ -261,6 +373,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       markdown(),
       markdownHighlightStyle,
       markdownSyntaxTheme,
+      search({ top: true, createPanel: createSearchPanel(locale) }),
       EditorState.tabSize.of(2),
       EditorView.lineWrapping,
       EditorView.updateListener.of((update: ViewUpdate) => {
@@ -280,8 +393,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         { key: 'Mod-i', run: (view) => runCommand(view, ITALIC_COMMAND) },
       ])),
       keymap.of([...defaultKeymap, ...historyKeymap]),
+      ...(!isTauri ? [keymap.of(searchKeymap)] : []),
     ];
-  }, [reportScrollPosition, updateHistoryState]);
+  }, [locale, reportScrollPosition, updateHistoryState]);
 
   return (
     <div style={{
@@ -296,6 +410,8 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
         onUndo={handleUndo}
         onRedo={handleRedo}
         onApply={applyCommand}
+        onFind={() => runSearchAction('find')}
+        locale={locale}
       />
       <div
         onDrop={handleDrop}
@@ -319,6 +435,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
           onChange={onChange}
           onCreateEditor={(view) => {
             updateHistoryState(view.state);
+            onReady?.();
           }}
         />
       </div>

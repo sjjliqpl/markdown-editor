@@ -174,6 +174,18 @@ fn build_menu(app: &AppHandle) -> tauri::Result<()> {
         .build()?;
 
     // ── Edit ──
+    let find_item = MenuItemBuilder::with_id("find", "Find…")
+        .accelerator("CmdOrCtrl+F")
+        .build(app)?;
+    let replace_item = MenuItemBuilder::with_id("replace", "Find and Replace…")
+        .accelerator("CmdOrCtrl+Alt+F")
+        .build(app)?;
+    let find_next_item = MenuItemBuilder::with_id("find_next", "Find Next")
+        .accelerator("CmdOrCtrl+G")
+        .build(app)?;
+    let find_previous_item = MenuItemBuilder::with_id("find_previous", "Find Previous")
+        .accelerator("CmdOrCtrl+Shift+G")
+        .build(app)?;
     let edit_menu = SubmenuBuilder::new(app, "Edit")
         .item(&PredefinedMenuItem::undo(app, None)?)
         .item(&PredefinedMenuItem::redo(app, None)?)
@@ -182,6 +194,11 @@ fn build_menu(app: &AppHandle) -> tauri::Result<()> {
         .item(&PredefinedMenuItem::copy(app, None)?)
         .item(&PredefinedMenuItem::paste(app, None)?)
         .item(&PredefinedMenuItem::select_all(app, None)?)
+        .separator()
+        .item(&find_item)
+        .item(&replace_item)
+        .item(&find_next_item)
+        .item(&find_previous_item)
         .build()?;
 
     // ── View ──
@@ -298,6 +315,10 @@ fn build_menu(app: &AppHandle) -> tauri::Result<()> {
             "save_as" => emit_to_focused("menu:saveAs", serde_json::Value::Null),
             "print" => emit_to_focused("menu:print", serde_json::Value::Null),
             "export_image" => emit_to_focused("menu:exportImage", serde_json::Value::Null),
+            "find" => emit_to_focused("menu:search", serde_json::json!("find")),
+            "replace" => emit_to_focused("menu:search", serde_json::json!("replace")),
+            "find_next" => emit_to_focused("menu:search", serde_json::json!("next")),
+            "find_previous" => emit_to_focused("menu:search", serde_json::json!("previous")),
             "view_editor" => emit_to_focused("menu:viewMode", serde_json::json!("editor")),
             "view_split" => emit_to_focused("menu:viewMode", serde_json::json!("split")),
             "view_preview" => emit_to_focused("menu:viewMode", serde_json::json!("preview")),

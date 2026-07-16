@@ -177,6 +177,17 @@ export const appAPI = {
     return Promise.resolve(() => {});
   },
 
+  onMenuSearch: (callback: (action: 'find' | 'replace' | 'next' | 'previous') => void): Promise<UnlistenFn> => {
+    if (isTauri) {
+      return listenCurrentWebviewWindow<string>('menu:search', (event) => {
+        if (event.payload === 'find' || event.payload === 'replace' || event.payload === 'next' || event.payload === 'previous') {
+          callback(event.payload);
+        }
+      });
+    }
+    return Promise.resolve(() => {});
+  },
+
   onMenuViewMode: (callback: (mode: string) => void): Promise<UnlistenFn> => {
     if (isTauri) return listenCurrentWebviewWindow<string>('menu:viewMode', (e) => callback(e.payload));
     return Promise.resolve(() => {});

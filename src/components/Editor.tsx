@@ -3,7 +3,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { Toolbar } from './Toolbar';
 import { MarkdownEditor } from './MarkdownEditor';
-import type { MarkdownEditorHandle } from './MarkdownEditor';
+import type { MarkdownEditorHandle, SearchAction } from './MarkdownEditor';
 import { MarkdownPreview } from './MarkdownPreview';
 import type { MarkdownPreviewHandle } from './MarkdownPreview';
 import { TableOfContents } from './TableOfContents';
@@ -16,6 +16,7 @@ import type { FontFamily } from '../hooks/useFontFamily';
 import { useToc } from '../hooks/useToc';
 import { t } from '../i18n';
 import { appAPI, isTauri } from '../lib/appAPI';
+import { canRunPendingSearch } from '../lib/search';
 import type { UnlistenFn } from '@tauri-apps/api/event';
 
 const INITIAL_CONTENT = `# Welcome to Markdown Editor
@@ -113,6 +114,29 @@ export const Editor: React.FC = () => {
   const editorRef = useRef<MarkdownEditorHandle>(null);
   const previewRef = useRef<MarkdownPreviewHandle>(null);
   const [editorTopLine, setEditorTopLine] = useState(0);
+  const [pendingSearchAction, setPendingSearchAction] = useState<SearchAction | null>(null);
+  const [editorReady, setEditorReady] = useState(false);
+
+  const handleSearchAction = useCallback((action: SearchAction) => {
+    if (viewMode === 'preview') {
+      setPendingSearchAction(action);
+      handleViewModeChange('editor');
+      return;
+    }
+    editorRef.current?.runSearchAction(action);
+  }, [handleViewModeChange, viewMode]);
+  const searchActionRef = useRef(handleSearchAction);
+  searchActionRef.current = handleSearchAction;
+
+  useEffect(() => {
+    if (!canRunPendingSearch(viewMode, editorReady, pendingSearchAction) || !pendingSearchAction) return;
+    editorRef.current?.runSearchAction(pendingSearchAction);
+    setPendingSearchAction(null);
+  }, [editorReady, pendingSearchAction, viewMode]);
+
+  useEffect(() => {
+    if (viewMode === 'preview') setEditorReady(false);
+  }, [viewMode]);
 
   const handleScrollToEditorLine = useCallback((lineNumber: number) => {
     editorRef.current?.scrollToLine(lineNumber);
@@ -167,6 +191,7 @@ export const Editor: React.FC = () => {
         appAPI.onMenuExportImage(async () => {
           await appAPI.nativePrint();
         }),
+        appAPI.onMenuSearch((action) => searchActionRef.current(action)),
       ]);
       if (!cancelled) {
         unlisteners.push(...fns);
@@ -340,7 +365,20 @@ export const Editor: React.FC = () => {
     if (isTauri) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      if (e.defaultPrevented) return;
+      if ((e.ctrlKey || e.metaKey) && e.altKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        handleSearchAction('replace');
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        handleSearchAction('find');
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        handleSearchAction('previous');
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        handleSearchAction('next');
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         saveFile();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
@@ -357,7 +395,7 @@ export const Editor: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [saveFile, newFile, openFile, handleExportPdfFile]);
+  }, [saveFile, newFile, openFile, handleExportPdfFile, handleSearchAction]);
 
   const showEditor = viewMode === 'split' || viewMode === 'editor';
   const showPreview = viewMode === 'split' || viewMode === 'preview';
@@ -489,6 +527,8 @@ export const Editor: React.FC = () => {
                 onChange={handleContentChange}
                 onScroll={viewMode === 'split' ? (pct) => previewRef.current?.scrollToPercentage(pct) : undefined}
                 onTopLineChange={setEditorTopLine}
+                locale={locale}
+                onReady={() => setEditorReady(true)}
               />
             </div>
           </div>
