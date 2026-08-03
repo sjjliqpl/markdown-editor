@@ -17,6 +17,70 @@ type CodeProps = React.ComponentProps<'code'> & {
 };
 
 type SyntaxHighlighterTheme = Record<string, React.CSSProperties>;
+type MermaidModule = typeof import('mermaid').default;
+
+let mermaidModulePromise: Promise<MermaidModule> | null = null;
+
+function loadMermaidModule() {
+  if (!mermaidModulePromise) {
+    mermaidModulePromise = import('mermaid').then((module) => module.default);
+  }
+  return mermaidModulePromise;
+}
+
+function MermaidDiagram({ chart, isDark }: { chart: string; isDark: boolean }) {
+  const [svg, setSvg] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const reactId = React.useId();
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const mermaid = await loadMermaidModule();
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: 'strict',
+          theme: isDark ? 'dark' : 'base',
+          flowchart: {
+            useMaxWidth: true,
+            htmlLabels: false,
+          },
+        });
+
+        const diagramId = `mermaid-${reactId.replace(/:/g, '-')}`;
+        const result = await mermaid.render(diagramId, chart);
+        if (cancelled) return;
+        setSvg(result.svg);
+        setError(null);
+      } catch (renderError) {
+        if (cancelled) return;
+        setSvg(null);
+        setError(renderError instanceof Error ? renderError.message : 'Failed to render Mermaid diagram');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [chart, isDark, reactId]);
+
+  if (error) {
+    return (
+      <pre className="mermaid-error">
+        {error}
+      </pre>
+    );
+  }
+
+  return (
+    <div
+      className="mermaid-rendered"
+      dangerouslySetInnerHTML={svg ? { __html: svg } : undefined}
+    />
+  );
+}
 
 /** Recursively extract plain text from React children */
 function extractText(children: React.ReactNode): string {
@@ -166,6 +230,14 @@ const MarkdownPreviewInner: React.ForwardRefRenderFunction<MarkdownPreviewHandle
     },
     code({ inline, className, children, ...props }: CodeProps) {
       const match = /language-(\w+)/.exec(className || '');
+      if (!inline && match?.[1] === 'mermaid') {
+        return (
+          <MermaidDiagram
+            chart={String(children).replace(/\n$/, '')}
+            isDark={isDark}
+          />
+        );
+      }
       return !inline && match ? (
         <SyntaxHighlighter
           style={(isDark ? oneDark : oneLight) as unknown as SyntaxHighlighterTheme}
@@ -367,6 +439,29 @@ const MarkdownPreviewInner: React.ForwardRefRenderFunction<MarkdownPreviewHandle
             border-radius: var(--radius-md) !important;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
             font-size: 0.85em !important;
+          }
+          #markdown-preview .mermaid-rendered {
+            margin: 1.25em 0;
+            padding: 16px;
+            border: 1px solid var(--border-surface);
+            border-radius: var(--radius-md);
+            background: var(--bg-elevated);
+            overflow-x: auto;
+          }
+          #markdown-preview .mermaid-rendered svg {
+            display: block;
+            max-width: 100%;
+            height: auto;
+          }
+          #markdown-preview .mermaid-error {
+            margin: 1.25em 0;
+            padding: 16px;
+            border: 1px solid var(--border-surface);
+            border-radius: var(--radius-md);
+            background: var(--bg-surface-warm);
+            color: var(--text-on-surface-secondary);
+            font-family: var(--font-mono);
+            white-space: pre-wrap;
           }
         `}</style>
         <ReactMarkdown
