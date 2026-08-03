@@ -16,6 +16,10 @@ export interface Translation {
   themeAuto: string;
   themeDark: string;
   themeLight: string;
+  themeWord: string;
+  themeVscode: string;
+  themeMint: string;
+  themeLabel: string;
   themeNext: (next: string) => string;
   autoSaved: string;
   markdown: string;
@@ -58,6 +62,10 @@ const en: Translation = {
   themeAuto: 'Auto',
   themeDark: 'Dark',
   themeLight: 'Light',
+  themeWord: 'Word Fresh',
+  themeVscode: 'VS Code Classic',
+  themeMint: 'Mint Breeze',
+  themeLabel: 'Theme',
   themeNext: (next: string) => `Theme: ${next}`,
   autoSaved: 'Auto-saved',
   markdown: 'Markdown',
@@ -100,6 +108,10 @@ const zh: Translation = {
   themeAuto: '自动',
   themeDark: '深色',
   themeLight: '浅色',
+  themeWord: 'Word 清爽',
+  themeVscode: 'VS Code 经典',
+  themeMint: '薄荷清新',
+  themeLabel: '主题',
   themeNext: (next: string) => `主题：${next}`,
   autoSaved: '已自动保存',
   markdown: 'Markdown',

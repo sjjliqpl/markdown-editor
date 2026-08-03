@@ -9,6 +9,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { FontFamily } from '../hooks/useFontFamily';
+import { isDarkTheme } from '../hooks/useTheme';
 import { slugify } from '../hooks/useToc';
 import { appAPI } from '../lib/appAPI';
 
@@ -28,7 +29,7 @@ function loadMermaidModule() {
   return mermaidModulePromise;
 }
 
-function MermaidDiagram({ chart, isDark }: { chart: string; isDark: boolean }) {
+function MermaidDiagram({ chart, themeKey }: { chart: string; themeKey: string }) {
   const [svg, setSvg] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const reactId = React.useId();
@@ -39,10 +40,26 @@ function MermaidDiagram({ chart, isDark }: { chart: string; isDark: boolean }) {
     (async () => {
       try {
         const mermaid = await loadMermaidModule();
+        const styles = getComputedStyle(document.documentElement);
+        const color = (name: string) => styles.getPropertyValue(name).trim();
+        const themeVariables = {
+          background: color('--bg-elevated'),
+          primaryColor: color('--bg-hover'),
+          primaryTextColor: color('--text-on-surface'),
+          primaryBorderColor: color('--accent'),
+          lineColor: color('--accent-hover'),
+          secondaryColor: color('--bg-elevated'),
+          secondaryTextColor: color('--text-on-surface'),
+          tertiaryColor: color('--bg-surface-warm'),
+          tertiaryTextColor: color('--text-on-surface'),
+          textColor: color('--text-on-surface'),
+          edgeLabelBackground: color('--bg-elevated'),
+        };
         mermaid.initialize({
           startOnLoad: false,
           securityLevel: 'strict',
-          theme: isDark ? 'dark' : 'base',
+          theme: 'base',
+          themeVariables,
           flowchart: {
             useMaxWidth: true,
             htmlLabels: false,
@@ -64,7 +81,7 @@ function MermaidDiagram({ chart, isDark }: { chart: string; isDark: boolean }) {
     return () => {
       cancelled = true;
     };
-  }, [chart, isDark, reactId]);
+  }, [chart, reactId, themeKey]);
 
   if (error) {
     return (
@@ -127,6 +144,7 @@ const MarkdownPreviewInner: React.ForwardRefRenderFunction<MarkdownPreviewHandle
 }, ref) => {
   const previewRef = React.useRef<HTMLDivElement>(null);
   const [isDark, setIsDark] = React.useState(true);
+  const [themeKey, setThemeKey] = React.useState('dark');
 
   useImperativeHandle(ref, () => ({
     scrollToPercentage: (percentage: number) => {
@@ -234,7 +252,7 @@ const MarkdownPreviewInner: React.ForwardRefRenderFunction<MarkdownPreviewHandle
         return (
           <MermaidDiagram
             chart={String(children).replace(/\n$/, '')}
-            isDark={isDark}
+            themeKey={themeKey}
           />
         );
       }
@@ -290,26 +308,21 @@ const MarkdownPreviewInner: React.ForwardRefRenderFunction<MarkdownPreviewHandle
   React.useEffect(() => {
     // Check current theme
     const currentTheme = document.documentElement.getAttribute('data-theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const isCurrentlyDark = currentTheme === 'dark' || (currentTheme !== 'light' && prefersDark);
-    setIsDark(isCurrentlyDark);
+    setThemeKey(currentTheme ?? 'dark');
+    setIsDark(isDarkTheme(currentTheme));
 
     // Listen for theme changes
     const handleThemeChange = () => {
       const theme = document.documentElement.getAttribute('data-theme');
-      const prefersD = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setIsDark(theme === 'dark' || (theme !== 'light' && prefersD));
+      setThemeKey(theme ?? 'dark');
+      setIsDark(isDarkTheme(theme));
     };
 
     const observer = new MutationObserver(handleThemeChange);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    mq.addEventListener('change', handleThemeChange);
-
     return () => {
       observer.disconnect();
-      mq.removeEventListener('change', handleThemeChange);
     };
   }, []);
 
@@ -452,6 +465,10 @@ const MarkdownPreviewInner: React.ForwardRefRenderFunction<MarkdownPreviewHandle
             display: block;
             max-width: 100%;
             height: auto;
+          }
+          #markdown-preview .prose .mermaid-rendered .nodeLabel p,
+          #markdown-preview .prose .mermaid-rendered .edgeLabel p {
+            line-height: normal;
           }
           #markdown-preview .mermaid-error {
             margin: 1.25em 0;

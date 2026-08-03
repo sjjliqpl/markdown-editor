@@ -15,11 +15,14 @@ import {
   Type,
   List,
   FileDown,
+  Palette,
 } from 'lucide-react';
 import type { Locale } from '../i18n';
 import { t } from '../i18n';
 import type { FontFamily } from '../hooks/useFontFamily';
 import { FONT_OPTIONS } from '../hooks/useFontFamily';
+import type { ThemeId } from '../hooks/useTheme';
+import { THEME_OPTIONS } from '../hooks/useTheme';
 
 type ViewMode = 'split' | 'editor' | 'preview';
 
@@ -37,6 +40,8 @@ interface ToolbarProps {
   onToggleLocale: () => void;
   fontFamily: FontFamily;
   onFontChange: (font: FontFamily) => void;
+  theme: ThemeId;
+  onThemeChange: (theme: ThemeId) => void;
   showToc?: boolean;
   onTocToggle?: () => void;
 }
@@ -55,6 +60,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onToggleLocale,
   fontFamily,
   onFontChange,
+  theme,
+  onThemeChange,
   showToc = false,
   onTocToggle,
 }) => {
@@ -303,6 +310,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
         {/* Font selector */}
         <FontSelector fontFamily={fontFamily} onFontChange={onFontChange} locale={locale} />
+        <ThemeSelector theme={theme} onThemeChange={onThemeChange} locale={locale} />
       </div>
     </div>
   );
@@ -538,3 +546,100 @@ const FontItem: React.FC<{
     </span>
   </button>
 );
+
+const ThemeSelector: React.FC<{
+  theme: ThemeId;
+  onThemeChange: (theme: ThemeId) => void;
+  locale: Locale;
+}> = ({ theme, onThemeChange, locale }) => {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const tr = t(locale);
+  const labels: Record<ThemeId, string> = {
+    auto: tr.themeAuto,
+    word: tr.themeWord,
+    vscode: tr.themeVscode,
+    mint: tr.themeMint,
+  };
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
+  return (
+    <div ref={containerRef} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen((value) => !value)}
+        title={tr.themeLabel}
+        aria-label={tr.themeLabel}
+        aria-expanded={open}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '5px',
+          padding: '4px 10px',
+          fontSize: '12px',
+          fontWeight: 500,
+          color: 'var(--text-secondary)',
+          background: 'var(--bg-hover)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-sm)',
+          cursor: 'pointer',
+          fontFamily: 'var(--font-ui)',
+        }}
+      >
+        <Palette size={14} />
+        <span style={{ maxWidth: '90px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {labels[theme]}
+        </span>
+        <ChevronDown size={11} style={{ opacity: 0.6 }} />
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute',
+          top: 'calc(100% + 4px)',
+          right: 0,
+          background: 'var(--bg-elevated)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-md)',
+          boxShadow: 'var(--shadow-lg)',
+          minWidth: '190px',
+          padding: '4px',
+          zIndex: 100,
+        }}>
+          {THEME_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              onClick={() => { onThemeChange(option.id); setOpen(false); }}
+              aria-pressed={theme === option.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '9px',
+                width: '100%',
+                padding: '8px 10px',
+                fontSize: '13px',
+                color: theme === option.id ? 'var(--accent)' : 'var(--text-primary)',
+                background: theme === option.id ? 'var(--accent-subtle)' : 'transparent',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                cursor: 'pointer',
+                textAlign: 'left',
+                fontFamily: 'var(--font-ui)',
+              }}
+            >
+              <span aria-hidden="true" style={{ width: '16px', height: '16px', borderRadius: '50%', background: option.swatch, border: '1px solid var(--border)', flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>{labels[option.id]}</span>
+              {theme === option.id && <span aria-hidden="true">✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};

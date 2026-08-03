@@ -79,9 +79,99 @@
   color-scheme: light;
 }
 
+/* ─── Word Fresh theme ───────────────────────────── */
+[data-theme='word'] {
+  --accent: #2b579a;
+  --accent-hover: #1f4277;
+  --accent-subtle: rgba(43, 87, 154, 0.12);
+  --accent-glow: rgba(43, 87, 154, 0.2);
+  --selection-bg: rgba(91, 155, 213, 0.28);
+
+  --bg-primary: #f3f6fb;
+  --bg-secondary: #e8eef7;
+  --bg-elevated: #ffffff;
+  --bg-surface: #ffffff;
+  --bg-surface-warm: #f8faff;
+  --bg-hover: #dce6f4;
+
+  --text-primary: #1f2937;
+  --text-secondary: #526176;
+  --text-muted: #8290a3;
+  --text-on-surface: #202938;
+  --text-on-surface-secondary: #5c6b80;
+
+  --border: #d3dce9;
+  --border-subtle: #e4eaf2;
+  --border-surface: #d7e0ec;
+  --shadow-sm: 0 1px 2px rgba(31, 41, 55, 0.06);
+  --shadow-md: 0 4px 12px rgba(31, 41, 55, 0.08);
+  --shadow-lg: 0 8px 30px rgba(31, 41, 55, 0.12);
+  color-scheme: light;
+}
+
+/* ─── VS Code Classic theme ─────────────────────── */
+[data-theme='vscode'] {
+  --accent: #569cd6;
+  --accent-hover: #75beff;
+  --accent-subtle: rgba(86, 156, 214, 0.16);
+  --accent-glow: rgba(86, 156, 214, 0.25);
+  --selection-bg: rgba(38, 79, 120, 0.75);
+
+  --bg-primary: #181818;
+  --bg-secondary: #1e1e1e;
+  --bg-elevated: #252526;
+  --bg-surface: #1e1e1e;
+  --bg-surface-warm: #252526;
+  --bg-hover: #2a2d2e;
+
+  --text-primary: #d4d4d4;
+  --text-secondary: #a6a6a6;
+  --text-muted: #6a6d70;
+  --text-on-surface: #d4d4d4;
+  --text-on-surface-secondary: #a6a6a6;
+
+  --border: #3e3e42;
+  --border-subtle: #2d2d30;
+  --border-surface: #3e3e42;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
+}
+
+/* ─── Mint Breeze theme ──────────────────────────── */
+[data-theme='mint'] {
+  --accent: #2a9d7b;
+  --accent-hover: #20785f;
+  --accent-subtle: rgba(42, 157, 123, 0.13);
+  --accent-glow: rgba(42, 157, 123, 0.2);
+  --selection-bg: rgba(91, 192, 164, 0.28);
+
+  --bg-primary: #edf8f4;
+  --bg-secondary: #e2f1ec;
+  --bg-elevated: #ffffff;
+  --bg-surface: #fbfefd;
+  --bg-surface-warm: #f1faf6;
+  --bg-hover: #d7eee6;
+
+  --text-primary: #19332d;
+  --text-secondary: #4e6d65;
+  --text-muted: #86a49c;
+  --text-on-surface: #1d3831;
+  --text-on-surface-secondary: #55736b;
+
+  --border: #c9e1d9;
+  --border-subtle: #dceee8;
+  --border-surface: #cfe3dc;
+  --shadow-sm: 0 1px 2px rgba(25, 51, 45, 0.06);
+  --shadow-md: 0 4px 12px rgba(25, 51, 45, 0.08);
+  --shadow-lg: 0 8px 30px rgba(25, 51, 45, 0.12);
+  color-scheme: light;
+}
+
 /* ─── Auto: respect OS preference ───────────────── */
 @media (prefers-color-scheme: light) {
-  :root:not([data-theme='dark']):not([data-theme='light']) {
+  :root:not([data-theme='dark']):not([data-theme='light']):not([data-theme='word']):not([data-theme='vscode']):not([data-theme='mint']) {
     --bg-primary: #f5f4f0;
     --bg-secondary: #eeece8;
     --bg-elevated: #e8e5e0;
@@ -185,4 +275,3 @@ button, a, input, textarea {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
-

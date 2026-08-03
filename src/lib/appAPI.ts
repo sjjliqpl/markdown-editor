@@ -208,6 +208,11 @@ export const appAPI = {
     return Promise.resolve(() => {});
   },
 
+  onMenuThemeChange: (callback: (themeId: string) => void): Promise<UnlistenFn> => {
+    if (isTauri) return listenCurrentWebviewWindow<string>('menu:themeChange', (e) => callback(e.payload));
+    return Promise.resolve(() => {});
+  },
+
   onFileOpened: (callback: (file: FileResult) => void): Promise<UnlistenFn> => {
     if (isTauri) return listenCurrentWebviewWindow<FileResult>('file:opened', (event) => callback(event.payload));
     if (isElectron) {

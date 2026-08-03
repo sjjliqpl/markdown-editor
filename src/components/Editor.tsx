@@ -10,6 +10,7 @@ import { TableOfContents } from './TableOfContents';
 import { useFileSystem } from '../hooks/useFileSystem';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useTheme } from '../hooks/useTheme';
+import type { ThemeId } from '../hooks/useTheme';
 import { useLocale } from '../hooks/useLocale';
 import { useFontFamily } from '../hooks/useFontFamily';
 import type { FontFamily } from '../hooks/useFontFamily';
@@ -94,7 +95,7 @@ export const Editor: React.FC = () => {
   );
 
   useAutoSave(content);
-  useTheme();
+  const { theme, setTheme } = useTheme();
   const { locale, toggleLocale } = useLocale();
   const { fontFamily, setFontFamily: setFontFamilyRaw } = useFontFamily();
 
@@ -161,7 +162,7 @@ export const Editor: React.FC = () => {
     }
   }, [fileName]);
 
-  // Tauri: listen for native menu events (view mode, TOC, locale, font, export image)
+  // Tauri: listen for native menu events (view mode, TOC, locale, font, theme, export image)
   useEffect(() => {
     if (!isTauri) return;
 
@@ -187,6 +188,11 @@ export const Editor: React.FC = () => {
         }),
         appAPI.onMenuFontChange((fontId) => {
           setFontFamily(fontId as FontFamily);
+        }),
+        appAPI.onMenuThemeChange((themeId) => {
+          if (themeId === 'auto' || themeId === 'word' || themeId === 'vscode' || themeId === 'mint') {
+            setTheme(themeId as ThemeId);
+          }
         }),
         appAPI.onMenuExportImage(async () => {
           await appAPI.nativePrint();
@@ -481,6 +487,8 @@ export const Editor: React.FC = () => {
           onToggleLocale={toggleLocale}
           fontFamily={fontFamily}
           onFontChange={setFontFamily}
+          theme={theme}
+          onThemeChange={setTheme}
           showToc={showToc}
           onTocToggle={handleTocToggle}
         />

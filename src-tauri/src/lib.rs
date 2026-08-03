@@ -218,6 +218,18 @@ fn build_menu(app: &AppHandle) -> tauri::Result<()> {
         .accelerator("CmdOrCtrl+Shift+L")
         .build(app)?;
 
+    // Theme submenu
+    let theme_auto = MenuItemBuilder::with_id("theme_auto", "Auto").build(app)?;
+    let theme_word = MenuItemBuilder::with_id("theme_word", "Word Fresh").build(app)?;
+    let theme_vscode = MenuItemBuilder::with_id("theme_vscode", "VS Code Classic").build(app)?;
+    let theme_mint = MenuItemBuilder::with_id("theme_mint", "Mint Breeze").build(app)?;
+    let theme_menu = SubmenuBuilder::new(app, "Theme")
+        .item(&theme_auto)
+        .item(&theme_word)
+        .item(&theme_vscode)
+        .item(&theme_mint)
+        .build()?;
+
     // Font submenu
     let font_source_serif = MenuItemBuilder::with_id("font_serif", "Source Serif 4").build(app)?;
     let font_lora = MenuItemBuilder::with_id("font_lora", "Lora").build(app)?;
@@ -249,6 +261,7 @@ fn build_menu(app: &AppHandle) -> tauri::Result<()> {
         .item(&toggle_toc)
         .separator()
         .item(&toggle_locale)
+        .item(&theme_menu)
         .item(&font_menu)
         .build()?;
 
@@ -324,6 +337,10 @@ fn build_menu(app: &AppHandle) -> tauri::Result<()> {
             "view_preview" => emit_to_focused("menu:viewMode", serde_json::json!("preview")),
             "toggle_toc" => emit_to_focused("menu:toggleToc", serde_json::Value::Null),
             "toggle_locale" => emit_to_focused("menu:toggleLocale", serde_json::Value::Null),
+            "theme_auto" => emit_to_focused("menu:themeChange", serde_json::json!("auto")),
+            "theme_word" => emit_to_focused("menu:themeChange", serde_json::json!("word")),
+            "theme_vscode" => emit_to_focused("menu:themeChange", serde_json::json!("vscode")),
+            "theme_mint" => emit_to_focused("menu:themeChange", serde_json::json!("mint")),
             _ if id_str.starts_with("font_") => {
                 let font_id = &id_str[5..]; // strip "font_" prefix
                 emit_to_focused("menu:fontChange", serde_json::json!(font_id))
